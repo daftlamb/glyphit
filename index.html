@@ -1384,13 +1384,45 @@ function exportPNG(scale) {
   pendingExportScale = scale;
   document.getElementById('pay-backdrop').style.display = 'flex';
 }
+function drawCaptionsOnCtx(xctx, scaleX, scaleY) {
+  captions.forEach(function(cap) {
+    var canvasRect = canvas.getBoundingClientRect();
+    var dispScaleX = canvas.width / canvasRect.width;
+    var dispScaleY = canvas.height / canvasRect.height;
+    var relX = cap.x * dispScaleX * scaleX;
+    var relY = cap.y * dispScaleY * scaleY;
+    xctx.save();
+    var fs = cap.size * dispScaleX * scaleX;
+    xctx.font = '500 ' + fs + 'px Outfit,sans-serif';
+    xctx.fillStyle = cap.color;
+    xctx.textAlign = cap.align || 'center';
+    if (cap.shadow) {
+      xctx.shadowColor = 'rgba(0,0,0,0.5)';
+      xctx.shadowBlur = fs * 0.18;
+    }
+    var lines = cap.text.split('\n');
+    lines.forEach(function(line, li) {
+      var tx = relX;
+      if (cap.align === 'center') tx = relX + (cap.el.offsetWidth * dispScaleX * scaleX / 2);
+      else if (cap.align === 'right') tx = relX + (cap.el.offsetWidth * dispScaleX * scaleX);
+      xctx.fillText(line, tx, relY + (li + 1) * fs * 1.35);
+    });
+    xctx.restore();
+  });
+}
+
 function doExport(scale) {
   var ch = charInput.value.trim() || 'glyph';
   scale = scale || 1;
   if (scale === 1) {
+    var oc1 = document.createElement('canvas');
+    oc1.width = canvas.width; oc1.height = canvas.height;
+    var oc1ctx = oc1.getContext('2d');
+    oc1ctx.drawImage(canvas, 0, 0);
+    drawCaptionsOnCtx(oc1ctx, 1, 1);
     var link = document.createElement('a');
     link.download = 'glyph-' + ch + '.png';
-    link.href = canvas.toDataURL('image/png');
+    link.href = oc1.toDataURL('image/png');
     link.click();
     return;
   }
@@ -1401,8 +1433,8 @@ function doExport(scale) {
   oc.height = H * scale;
   var octx = oc.getContext('2d');
   octx.scale(scale, scale);
-  // drawPoster uses dc (exportCtx) internally — full re-render, not a scale-up
   drawPoster(ch, lastData, lastEtymInfo, undefined, undefined, octx);
+  drawCaptionsOnCtx(octx, scale, scale);
   var link = document.createElement('a');
   link.download = 'glyph-' + ch + '-' + scale + 'x.png';
   link.href = oc.toDataURL('image/png');
