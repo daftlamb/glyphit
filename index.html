@@ -131,6 +131,14 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
   #drawer-handle{display:none}
   #panel-inner{height:100%;overflow-y:auto;display:flex;flex-direction:column}
 }
+
+/* Caption layer */
+#caption-layer{position:absolute;inset:0;pointer-events:none;z-index:20}
+.caption-el{position:absolute;pointer-events:all;cursor:move;user-select:none;line-height:1.35;white-space:pre-wrap;word-break:break-word}
+.caption-el.selected{outline:2px dashed rgba(255,255,255,.5);outline-offset:4px}
+.snap-guide{position:absolute;pointer-events:none;z-index:19}
+.snap-guide.h{height:1px;background:rgba(57,255,20,.75)}
+.snap-guide.v{width:1px;background:rgba(57,255,20,.75)}
 </style>
 </head>
 <body>
@@ -225,6 +233,21 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
       <button class="btn" id="btn-custom-reset" style="width:100%;margin-top:6px;font-size:11px;color:var(--muted)">Reset to Scheme</button>
     </div>
     <div class="panel-section">
+      <div class="section-title">Caption</div>
+      <textarea id="caption-text" placeholder="Add text to your poster…" rows="2" style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px 8px;font-family:inherit;font-size:12px;outline:none;resize:none;box-sizing:border-box"></textarea>
+      <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+        <input type="number" id="cap-size" value="24" min="8" max="120" style="width:52px;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font-size:12px;outline:none"/>
+        <input type="color" id="cap-color" value="#ffffff" style="width:36px;height:28px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0"/>
+        <select id="cap-align" style="flex:1;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:4px 6px;font-size:12px;outline:none">
+          <option value="left">Left</option>
+          <option value="center" selected>Center</option>
+          <option value="right">Right</option>
+        </select>
+        <button class="btn" id="btn-add-caption" style="padding:5px 10px;font-size:11px">+ add</button>
+      </div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">Drag to position · Right-click to delete</div>
+    </div>
+    <div class="panel-section">
       <div class="section-title">Display</div>
       <div class="toggle-row">
         <span>Show stroke order</span>
@@ -259,8 +282,9 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
     </div>
     </div><!-- /panel-inner -->
   </div><!-- /panel -->
-  <div id="canvas-area">
+  <div id="canvas-area"><div id="canvas-wrap" style="position:relative;display:inline-block;line-height:0">
     <canvas id="glyph-canvas" width="520" height="680"></canvas>
+    <div id="caption-layer"></div>
   </div>
 </div>
 <script>
@@ -525,6 +549,120 @@ document.getElementById('btn-theme').addEventListener('click', function() {
     }
   });
 })();
+
+
+// ── Caption System ────────────────────────────────────────────────────────────
+var captions = [];
+var selectedCaption = null;
+var captionLayer = document.getElementById('caption-layer');
+var snapGuideH = null, snapGuideV = null;
+var snapThreshold = 8;
+
+function ensureSnapGuides() {
+  if (!snapGuideH) {
+    snapGuideH = document.createElement('div');
+    snapGuideH.className = 'snap-guide h';
+    snapGuideH.style.display = 'none';
+    document.getElementById('canvas-wrap').appendChild(snapGuideH);
+  }
+  if (!snapGuideV) {
+    snapGuideV = document.createElement('div');
+    snapGuideV.className = 'snap-guide v';
+    snapGuideV.style.display = 'none';
+    document.getElementById('canvas-wrap').appendChild(snapGuideV);
+  }
+}
+ensureSnapGuides();
+
+function hideSnapGuides() {
+  snapGuideH.style.display = 'none';
+  snapGuideV.style.display = 'none';
+}
+
+function makeDraggable(el, capObj) {
+  var dragging = false, startX, startY, startLeft, startTop;
+  el.addEventListener('mousedown', function(e) {
+    dragging = true;
+    startX = e.clientX; startY = e.clientY;
+    startLeft = parseFloat(el.style.left) || 0;
+    startTop = parseFloat(el.style.top) || 0;
+    selectCaption(capObj);
+    e.preventDefault();
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    var canvasRect = canvas.getBoundingClientRect();
+    var newLeft = startLeft + (e.clientX - startX);
+    var newTop = startTop + (e.clientY - startY);
+    var elW = el.offsetWidth, elH = el.offsetHeight;
+    // Snap to canvas center
+    var centerX = canvasRect.width / 2 - elW / 2;
+    var centerY = canvasRect.height / 2 - elH / 2;
+    if (Math.abs(newLeft - centerX) < snapThreshold) {
+      newLeft = centerX;
+      snapGuideV.style.left = (canvasRect.width / 2) + 'px';
+      snapGuideV.style.top = '0px';
+      snapGuideV.style.height = canvasRect.height + 'px';
+      snapGuideV.style.display = 'block';
+    } else { snapGuideV.style.display = 'none'; }
+    if (Math.abs(newTop - centerY) < snapThreshold) {
+      newTop = centerY;
+      snapGuideH.style.top = (canvasRect.height / 2) + 'px';
+      snapGuideH.style.left = '0px';
+      snapGuideH.style.width = canvasRect.width + 'px';
+      snapGuideH.style.display = 'block';
+    } else { snapGuideH.style.display = 'none'; }
+    el.style.left = newLeft + 'px';
+    el.style.top = newTop + 'px';
+    capObj.x = newLeft; capObj.y = newTop;
+  });
+  document.addEventListener('mouseup', function() {
+    if (dragging) { dragging = false; hideSnapGuides(); }
+  });
+  el.addEventListener('contextmenu', function(e) {
+    e.preventDefault();
+    captionLayer.removeChild(el);
+    captions.splice(captions.indexOf(capObj), 1);
+    if (selectedCaption === capObj) selectedCaption = null;
+  });
+  el.addEventListener('click', function() { selectCaption(capObj); });
+}
+
+function selectCaption(capObj) {
+  if (selectedCaption) selectedCaption.el.classList.remove('selected');
+  selectedCaption = capObj;
+  if (capObj) capObj.el.classList.add('selected');
+}
+
+document.getElementById('btn-add-caption').addEventListener('click', function() {
+  var text = document.getElementById('caption-text').value.trim();
+  if (!text) return;
+  var size = parseInt(document.getElementById('cap-size').value) || 24;
+  var color = document.getElementById('cap-color').value;
+  var align = document.getElementById('cap-align').value;
+  var canvasRect = canvas.getBoundingClientRect();
+  var el = document.createElement('div');
+  el.className = 'caption-el';
+  el.style.fontSize = size + 'px';
+  el.style.color = color;
+  el.style.fontFamily = "'Outfit','Noto Sans SC',sans-serif";
+  el.style.fontWeight = '500';
+  el.style.textAlign = align;
+  el.style.textShadow = '0 1px 4px rgba(0,0,0,.5)';
+  el.textContent = text;
+  el.style.left = '0px';
+  el.style.top = '0px';
+  captionLayer.appendChild(el);
+  var elW = el.offsetWidth, elH = el.offsetHeight;
+  var cx = canvasRect.width / 2 - elW / 2;
+  var cy = canvasRect.height / 2 - elH / 2;
+  el.style.left = cx + 'px';
+  el.style.top = cy + 'px';
+  var capObj = { el: el, text: text, x: cx, y: cy, size: size, color: color, align: align };
+  captions.push(capObj);
+  makeDraggable(el, capObj);
+  selectCaption(capObj);
+});
 
 // ── Generate ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', generate);
