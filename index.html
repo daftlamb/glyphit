@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Glyph It — Chinese Character Art Generator</title>
+<meta property="og:title" content="Glyph It"/>
+<meta property="og:description" content="每一个汉字，都是一张海报。将笔画解构成星河粒子，生成独一无二的墨迹艺术。"/>
+<meta property="og:url" content="https://glyphitapp.com"/>
+<meta property="og:type" content="website"/>
+<meta name="description" content="Glyph It — Chinese character poster generator. Deconstruct any character into ink particles. Every render unique."/>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<meta property="og:title" content="Glyph It"/>
+<meta property="og:description" content="每一个汉字，都是一张海报。将笔画解构成星河粒子，生成独一无二的墨迹艺术。"/>
+<meta property="og:url" content="https://glyphitapp.com"/>
+<meta property="og:type" content="website"/>
+<meta name="description" content="Glyph It — Chinese character poster generator. Deconstruct any character into ink particles. Every render unique."/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#f0ece4;--panel-bg:#fff;--border:#e0d8cc;--text:#1a1a1a;--muted:#888;--accent:#8b4513;--header-bg:#fff;--header-h:44px}
+[data-theme="dark"]{--bg:#141414;--panel-bg:#1e1e1e;--border:#2a2a2a;--text:#f0f0f0;--muted:#666;--accent:#c8941a;--header-bg:#0e0e0e}
+html,body{height:100%;overflow:hidden}
+body{font-family:'Outfit','Noto Serif SC',sans-serif;font-size:13px;background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+header{height:var(--header-h);background:var(--header-bg);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 16px;gap:10px;flex-shrink:0;z-index:100}
+.brand{font-size:16px;font-weight:500;font-family:'Outfit',sans-serif}
+.brand-it{color:var(--accent)}
+.header-spacer{flex:1}
+.btn-icon{background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;height:28px;cursor:pointer;font-family:inherit;font-size:12px;padding:0 10px;transition:all .15s}
+.btn-icon:hover{border-color:var(--accent);color:var(--accent)}
+#app{display:flex;flex:1;min-height:0}
+#panel{width:300px;flex-shrink:0;background:var(--panel-bg);border-right:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column}
+.panel-section{padding:14px 16px;border-bottom:1px solid var(--border)}
+.section-title{font-size:10px;font-weight:500;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.btn{background:none;border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 10px;font-family:inherit;font-size:12px;cursor:pointer;transition:all .15s}
+.btn:hover,.btn.active{border-color:var(--accent);color:var(--accent)}
+.btn-primary{background:var(--accent);border:none;color:#fff;border-radius:6px;padding:9px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;width:100%;margin-top:10px;transition:opacity .15s}
+.btn-primary:hover{opacity:.85}
+.char-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-family:'Noto Serif SC',serif;font-size:36px;text-align:center;outline:none;transition:border-color .15s}
+.char-input:focus{border-color:var(--accent)}
+.chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.chip{background:none;border:1px solid var(--border);color:var(--text);border-radius:5px;padding:3px 8px;font-family:'Noto Serif SC',serif;font-size:16px;cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--accent);color:var(--accent)}
+.btn-group{display:flex;gap:4px;flex-wrap:wrap}
+.btn-group .btn{font-size:11px;padding:4px 10px}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:12px}
+.toggle-switch{position:relative;width:32px;height:18px;cursor:pointer;flex-shrink:0}
+.toggle-switch input{opacity:0;width:0;height:0;position:absolute}
+.toggle-track{position:absolute;inset:0;background:var(--border);border-radius:9px;transition:background .2s}
+.toggle-switch input:checked+.toggle-track{background:var(--accent)}
+.toggle-knob{position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:transform .2s;pointer-events:none;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.toggle-switch input:checked~.toggle-knob{transform:translateX(14px)}
+#panel-export{padding:14px 16px;margin-top:auto;border-top:1px solid var(--border)}
+#status{font-size:11px;color:var(--muted);min-height:14px;margin-top:6px}
+#canvas-area{flex:1;display:flex;align-items:center;justify-content:center;background:var(--bg);overflow:hidden}
+#glyph-canvas{border-radius:4px;box-shadow:0 4px 32px rgba(0,0,0,.15);max-width:100%;max-height:100%;width:auto;height:auto;object-fit:contain}
+@media(max-width:700px){
+  /* App fills full viewport; panel is fixed so canvas-area gets exact remaining space */
+  html,body{height:100%;overflow:hidden}
+  #app{flex-direction:column;width:100%;height:calc(100vh - var(--header-h));overflow:hidden}
+  #canvas-area{
+    width:100%;
+    height:calc(100vh - var(--header-h) - 48px);
+    flex:none;
+    min-height:0;
+    overflow:hidden;
+    order:1;
+    display:flex;
+    align-items:flex-start;
+    justify-content:center;
+    box-sizing:border-box;
+  }
+  #glyph-canvas{
+    /* Fit by height — canvas is portrait 720×1020, height is limiting axis on mobile */
+    max-height:calc(100vh - var(--header-h) - 48px);
+    max-width:100%;
+    width:auto;
+    height:auto;
+  }
+  #panel{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    width:100%;
+    height:48px;
+    max-height:88vh;
+    border-right:none;
+    border-top:1px solid var(--border);
+    border-radius:16px 16px 0 0;
+    z-index:100;
+    transition:height .3s cubic-bezier(.4,0,.2,1);
+    overflow:hidden;
+    box-shadow:0 -4px 24px rgba(0,0,0,.15);
+    order:2;
+  }
+  #panel.drawer-open{height:82vh}
+  #panel-inner{height:100%;overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;flex-direction:column}
+  #drawer-handle{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    height:48px;
+    cursor:pointer;
+    flex-shrink:0;
+    touch-action:none;
+    padding:0 16px;
+    position:relative;
+  }
+  #drawer-handle::before{
+    content:'';
+    width:36px;height:4px;
+    background:var(--border);
+    border-radius:2px;
+    position:absolute;
+    top:10px;
+    left:50%;
+    transform:translateX(-50%);
+  }
+  #drawer-quick-gen{
+    position:absolute;
+    right:16px;
+    top:50%;
+    transform:translateY(-50%);
+    background:var(--accent);
+    color:#fff;
+    border:none;
+    border-radius:8px;
+    padding:6px 14px;
+    font-family:inherit;
+    font-size:13px;
+    font-weight:500;
+    cursor:pointer;
+  }
+}
+@media(min-width:701px){
+  #drawer-handle{display:none}
+  #panel-inner{height:100%;overflow-y:auto;display:flex;flex-direction:column}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand">Glyph<span class="brand-it">It</span></div>
+  <div class="header-spacer"></div>
+  <button class="btn-icon" id="btn-export-hdr">&#8595; PNG</button>
+  <button class="btn-icon" id="btn-theme">&#9789;</button>
+</header>
+<div id="app">
+  <div id="panel">
+    <div id="drawer-handle">
+      <button id="drawer-quick-gen">✦ Generate</button>
+    </div>
+    <div id="panel-inner">
+    <div class="panel-section">
+      <div class="section-title">Character</div>
+      <input class="char-input" id="char-input" maxlength="1" placeholder="&#23383;" autocomplete="off" spellcheck="false"/>
+      <div class="chips" id="preset-chips"></div>
+      <button class="btn-primary" id="btn-generate">Generate Poster</button>
+    </div>
+    <div class="panel-section">
+      <div class="section-title">Style</div>
+      <div class="btn-group" id="scheme-group">
+        <button class="btn active" data-scheme="parchment">Parchment</button>
+        <button class="btn" data-scheme="ink">Ink</button>
+        <button class="btn" data-scheme="night">Night</button>
+        <button class="btn" data-scheme="minimal">Minimal</button>
+        <button class="btn" data-scheme="crimson">Crimson</button>
+        <button class="btn" data-scheme="forest">Forest</button>
+        <button class="btn" data-scheme="dusk">Dusk</button>
+        <button class="btn" data-scheme="paper">Paper</button>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="section-title">Display</div>
+      <div class="toggle-row">
+        <span>Show stroke order</span>
+        <label class="toggle-switch"><input type="checkbox" id="tog-strokes" checked/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
+      </div>
+      <div class="toggle-row">
+        <span>Show etymology</span>
+        <label class="toggle-switch"><input type="checkbox" id="tog-etym" checked/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
+      </div>
+      <div class="toggle-row">
+        <span>Animate strokes</span>
+        <label class="toggle-switch"><input type="checkbox" id="tog-anim"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
+      </div>
+      <div class="toggle-row">
+        <span>Color ink</span>
+        <label class="toggle-switch"><input type="checkbox" id="tog-color"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
+      </div>
+      <div class="toggle-row">
+        <span>Flow lines</span>
+        <label class="toggle-switch"><input type="checkbox" id="tog-fog" checked/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
+      </div>
+    </div>
+    <div id="panel-export">
+      <div class="section-title">Export</div>
+      <button class="btn-primary" id="btn-export-panel">↓ Download PNG 1×</button>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn" style="flex:1" id="btn-export-2x">↓ 2×</button>
+        <button class="btn" style="flex:1" id="btn-export-4x">↓ 4×</button>
+        <button class="btn" style="flex:1" id="btn-export-svg">↓ SVG</button>
+      </div>
+      <div id="status"></div>
+    </div>
+    </div><!-- /panel-inner -->
+  </div><!-- /panel -->
+  <div id="canvas-area">
+    <canvas id="glyph-canvas" width="520" height="680"></canvas>
+  </div>
+</div>
+<script>
+// ── Mobile drawer ────────────────────────────────────────────────────────────
+(function(){
+  var panel = document.getElementById('panel');
+  var handle = document.getElementById('drawer-handle');
+  if (!handle || !panel) return;
+  var isOpen = false, startY = 0, startH = 0, dragging = false;
+  function setOpen(open) {
+    isOpen = open;
+    panel.classList.toggle('drawer-open', open);
+    panel.style.height = '';
+  }
+  // Quick generate button — runs generate then closes drawer
+  var quickBtn = document.getElementById('drawer-quick-gen');
+  if (quickBtn) {
+    quickBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      // trigger generate (defined in main IIFE)
+      var genBtn = document.getElementById('btn-generate');
+      if (genBtn) genBtn.click();
+      setOpen(false); // collapse drawer so animation is visible
+    });
+  }
+  handle.addEventListener('click', function(){ if (!dragging) setOpen(!isOpen); });
+  handle.addEventListener('touchstart', function(e){
+    startY = e.touches[0].clientY; startH = panel.offsetHeight; dragging = false;
+    panel.style.transition = 'none';
+  }, {passive:true});
+  handle.addEventListener('touchmove', function(e){
+    var dy = startY - e.touches[0].clientY;
+    if (Math.abs(dy) > 4) dragging = true;
+    panel.style.height = Math.max(64, Math.min(window.innerHeight * 0.88, startH + dy)) + 'px';
+  }, {passive:true});
+  handle.addEventListener('touchend', function(){
+    panel.style.transition = '';
+    setOpen(panel.offsetHeight > window.innerHeight * 0.3);
+    setTimeout(function(){ dragging = false; }, 50);
+  });
+})();
+
+(function(){
+'use strict';
+
+// Color Schemes
+var SCHEMES = {
+  parchment: { bg:'#f5efe0', ink:'#2a1a0e', accent:'#8b4513', muted:'#b89870', ruled:'rgba(139,69,19,0.06)', watermark:'rgba(139,69,19,0.04)', badge:'#8b4513', badgeText:'#f5efe0', palette:['#2a1a0e','#8b4513','#4a6741','#1a3a5c','#5c3a6b','#6b4a1a','#2a4a4a','#5c4a2a'] },
+  ink:       { bg:'#f5c800', ink:'#1a1208', accent:'#1a1208', muted:'#7a6010', ruled:'rgba(0,0,0,0.06)', watermark:'rgba(0,0,0,0.04)', badge:'#1a1208', badgeText:'#f5c800', palette:['#1a1208','#2a2010','#0a0a08','#1a1008','#221808','#181208','#100e06','#201808'] },
+  night:     { bg:'#0d0d1a', ink:'#a0e0ff', accent:'#00ffcc', muted:'#406080', ruled:'rgba(0,255,204,0.04)', watermark:'rgba(0,255,204,0.03)', badge:'#00ffcc', badgeText:'#0d0d1a', palette:['#a0e0ff','#00ffcc','#ff80c0','#80ffaa','#c0a0ff','#ffcc40','#40e0d0','#ff8040'] },
+  minimal:   { bg:'#ffffff', ink:'#111111', accent:'#333333', muted:'#aaaaaa', ruled:'rgba(0,0,0,0.04)', watermark:'rgba(0,0,0,0.03)', badge:'#333333', badgeText:'#ffffff', palette:['#111111','#333333','#555555','#222222','#444444','#666666','#1a1a1a','#2a2a2a'] },
+  crimson:   { bg:'#1a0408', ink:'#ff4455', accent:'#ff6677', muted:'#6a2030', ruled:'rgba(255,68,85,0.05)', watermark:'rgba(255,68,85,0.03)', badge:'#ff4455', badgeText:'#1a0408', palette:['#ff4455','#ff6677','#cc2233','#ff8899','#dd3344','#ff2244','#cc1122','#ff99aa'] },
+  forest:    { bg:'#0e1a10', ink:'#7ddc8a', accent:'#4db85a', muted:'#2a4a30', ruled:'rgba(77,184,90,0.05)', watermark:'rgba(77,184,90,0.03)', badge:'#4db85a', badgeText:'#0e1a10', palette:['#7ddc8a','#4db85a','#a0e8aa','#2a8a3a','#60c870','#99dda0','#3aaa4a','#c0f0c8'] },
+  dusk:      { bg:'#1a0e22', ink:'#e0aaff', accent:'#b06aee', muted:'#5a3a7a', ruled:'rgba(176,106,238,0.05)', watermark:'rgba(176,106,238,0.03)', badge:'#b06aee', badgeText:'#1a0e22', palette:['#e0aaff','#b06aee','#cc88ff','#9955cc','#dd99ff','#8844bb','#ffbbff','#aa66dd'] },
+  paper:     { bg:'#e8e0d0', ink:'#1a2a4a', accent:'#2a4a8a', muted:'#7a8aaa', ruled:'rgba(26,42,74,0.05)', watermark:'rgba(26,42,74,0.03)', badge:'#2a4a8a', badgeText:'#e8e0d0', palette:['#1a2a4a','#2a4a8a','#3a5a9a','#1a3a6a','#4a6aaa','#0a1a3a','#2a3a6a','#5a7aba'] }
+};
+
+var ETYM = {
+  '山':{ radical:'山', strokes:3, pinyin:'shān', meaning:'山岳 / mountain', etymology:'象形字，像三座山峰并列的形状，中间高、两侧低。甲骨文已有此形。', oracle:true },
+  '水':{ radical:'水', strokes:4, pinyin:'shuǐ', meaning:'水流 / water', etymology:'象形字，像河流蜿蜒流动的样子，中间为主流，两侧为支流。', oracle:true },
+  '火':{ radical:'火', strokes:4, pinyin:'huǒ', meaning:'火焰 / fire', etymology:'象形字，像火焰燃烧的形状，上部为跳动的火苗，下部为燃烧点。', oracle:true },
+  '木':{ radical:'木', strokes:4, pinyin:'mù', meaning:'树木 / wood', etymology:'象形字，像一棵树的形状，上为枝叶，下为根系，中间为树干。', oracle:true },
+  '日':{ radical:'日', strokes:4, pinyin:'rì', meaning:'太阳 / sun', etymology:'象形字，甲骨文作圆形中有一点，表示太阳及其光芒，后演变为方形。', oracle:true },
+  '月':{ radical:'月', strokes:4, pinyin:'yuè', meaning:'月亮 / moon', etymology:'象形字，像月牙形状，甲骨文呈弯月形，中有一横表示月中之影。', oracle:true },
+  '土':{ radical:'土', strokes:3, pinyin:'tǔ', meaning:'土地 / earth', etymology:'象形字，像地面上堆起的土堆形状，下横为地，上横为土堆。', oracle:true },
+  '金':{ radical:'金', strokes:8, pinyin:'jīn', meaning:'金属 / gold', etymology:'象形兼会意字，像地下埋藏金属矿石的形状，四点表示金属碎片或光泽。', oracle:false },
+  '人':{ radical:'人', strokes:2, pinyin:'rén', meaning:'人类 / person', etymology:'象形字，像人侧身站立的形状，甲骨文即为简单的侧面人形。', oracle:true },
+  '口':{ radical:'口', strokes:3, pinyin:'kǒu', meaning:'嘴巴 / mouth', etymology:'象形字，像人张开嘴的形状，甲骨文作方形或圆形，表示口腔。', oracle:true },
+  '手':{ radical:'手', strokes:4, pinyin:'shǒu', meaning:'手 / hand', etymology:'象形字，像张开的手掌及五指形状，甲骨文清晰可见手指轮廓。', oracle:true },
+  '心':{ radical:'心', strokes:4, pinyin:'xīn', meaning:'心脏 / heart', etymology:'象形字，像心脏的形状，甲骨文有心室轮廓，后简化为现在写法。', oracle:true },
+  '目':{ radical:'目', strokes:5, pinyin:'mù', meaning:'眼睛 / eye', etymology:'象形字，像人眼的形状，甲骨文作竖置的椭圆形中有一横，表示眼球与瞳孔。', oracle:true },
+  '耳':{ radical:'耳', strokes:6, pinyin:'ěr', meaning:'耳朵 / ear', etymology:'象形字，像人耳的轮廓，甲骨文清晰呈现耳廓与耳道的形状。', oracle:true },
+  '足':{ radical:'足', strokes:7, pinyin:'zú', meaning:'脚 / foot', etymology:'会意字，上为"口"（膝盖），下为止（脚趾），合表脚和腿部。', oracle:true },
+  '刀':{ radical:'刀', strokes:2, pinyin:'dāo', meaning:'刀具 / knife', etymology:'象形字，像弯曲的刀形，甲骨文呈一弯一直的刀具形状。', oracle:true },
+  '弓':{ radical:'弓', strokes:3, pinyin:'gōng', meaning:'弓箭 / bow', etymology:'象形字，像弓的形状，甲骨文已有此形，表示弯曲的弓身。', oracle:true },
+  '矢':{ radical:'矢', strokes:5, pinyin:'shǐ', meaning:'箭 / arrow', etymology:'象形字，像箭的形状，上为箭头，下为箭羽，中为箭杆。', oracle:true },
+  '石':{ radical:'石', strokes:5, pinyin:'shí', meaning:'石头 / stone', etymology:'象形字，像山崖下的石块形状，上为山崖，下为落石。', oracle:true },
+  '田':{ radical:'田', strokes:5, pinyin:'tián', meaning:'田地 / field', etymology:'象形字，像农田被分割成小块的形状，纵横线表示田间阡陌。', oracle:true },
+  '力':{ radical:'力', strokes:2, pinyin:'lì', meaning:'力量 / strength', etymology:'象形字，像肌肉用力时鼓起的形状，或说像耕地农具犁的侧面形状。', oracle:true },
+  '又':{ radical:'又', strokes:2, pinyin:'yòu', meaning:'右手 / right hand', etymology:'象形字，像右手的形状，甲骨文清晰呈现三指弯曲的右手侧面。', oracle:true },
+  '女':{ radical:'女', strokes:3, pinyin:'nǚ', meaning:'女性 / woman', etymology:'象形字，像女子跪坐交手的形状，甲骨文表现古代女子端坐的姿态。', oracle:true },
+  '子':{ radical:'子', strokes:3, pinyin:'zǐ', meaning:'孩子 / child', etymology:'象形字，像婴孩的形状，头大体小，手臂伸开，甲骨文即有此形。', oracle:true },
+  '马':{ radical:'马', strokes:3, pinyin:'mǎ', meaning:'马 / horse', etymology:'象形字，甲骨文像马的侧面形状，可见鬃毛、四蹄，后经简化演变为现形。', oracle:true },
+  '牛':{ radical:'牛', strokes:4, pinyin:'niú', meaning:'牛 / ox', etymology:'象形字，像牛头正面形状，上为两角，中为头部，下为鼻面。', oracle:true },
+  '羊':{ radical:'羊', strokes:6, pinyin:'yáng', meaning:'羊 / sheep', etymology:'象形字，像羊头正面形状，上为两弯角，下为颜面，甲骨文形态清晰。', oracle:true },
+  '鱼':{ radical:'鱼', strokes:8, pinyin:'yú', meaning:'鱼 / fish', etymology:'象形字，像鱼的侧面轮廓，有头、身、鳍、尾各部，甲骨文已有较完整的鱼形。', oracle:true },
+  '鸟':{ radical:'鸟', strokes:5, pinyin:'niǎo', meaning:'鸟 / bird', etymology:'象形字，像鸟的侧面形状，有喙、翅、爪等特征，甲骨文已有较写实的鸟形。', oracle:true },
+  '虫':{ radical:'虫', strokes:6, pinyin:'chóng', meaning:'虫子 / insect', etymology:'象形字，本为蛇形，甲骨文像蛇的盘曲形状，后引申泛指各类爬行动物和昆虫。', oracle:true },
+  '明':{ radical:'日', strokes:8, pinyin:'míng', meaning:'明亮 / bright', etymology:'会意字，由"日"和"月"组成，日月同辉，表示光明、明亮之意。', oracle:true },
+  '森':{ radical:'木', strokes:12, pinyin:'sēn', meaning:'森林 / forest', etymology:'会意字，三个"木"字叠加，表示树木繁多、郁郁葱葱的大森林。', oracle:false },
+  '林':{ radical:'木', strokes:8, pinyin:'lín', meaning:'树林 / grove', etymology:'会意字，两个"木"字并列，表示树木丛生的树林。', oracle:false },
+  '淼':{ radical:'水', strokes:12, pinyin:'miǎo', meaning:'水势广大 / vast water', etymology:'会意字，三个"水"字叠加，形容水域宽广、烟波浩渺的景象。', oracle:false },
+  '焱':{ radical:'火', strokes:12, pinyin:'yàn', meaning:'火花 / flames', etymology:'会意字，三个"火"字叠加，表示火焰跳动、光焰明亮的样子。', oracle:false },
+  '鑫':{ radical:'金', strokes:24, pinyin:'xīn', meaning:'财富兴旺 / prosperity', etymology:'会意字，三个"金"字叠加，象征财富积累、兴旺发达，常用于人名店名。', oracle:false },
+  '品':{ radical:'口', strokes:9, pinyin:'pǐn', meaning:'品质 / quality', etymology:'会意字，三个"口"字叠加，本义为众多，引申为品类、品质、品格等义。', oracle:false },
+  '晶':{ radical:'日', strokes:12, pinyin:'jīng', meaning:'晶莹 / crystal', etymology:'会意字，三个"日"字叠加，形容光亮闪烁、晶莹透明如星光的样子。', oracle:false },
+  '众':{ radical:'人', strokes:6, pinyin:'zhòng', meaning:'众多 / multitude', etymology:'会意字，三个"人"字叠加，表示人数众多，引申为大众、群众之意。', oracle:false },
+  '炎':{ radical:'火', strokes:8, pinyin:'yán', meaning:'炎热 / scorching', etymology:'会意字，两个"火"字叠加，上火下火表示火势旺盛、极度炎热。', oracle:true },
+  '道':{ radical:'辶', strokes:12, pinyin:'dào', meaning:'道路 / way/tao', etymology:'会意兼形声字，由"辶"（行走）和"首"（头，引导）组成，本义为道路，引申为方法、规律、哲学概念。', oracle:false },
+  '德':{ radical:'彳', strokes:15, pinyin:'dé', meaning:'道德 / virtue', etymology:'会意字，从"彳"（行走）、"直"（正直）、"心"（内心），表示心正行直的品德。', oracle:false },
+  '美':{ radical:'羊', strokes:9, pinyin:'měi', meaning:'美丽 / beauty', etymology:'会意字，从"羊"从"大"，羊大为美，古人以肥美的羊为美好事物的象征。', oracle:true },
+  '善':{ radical:'羊', strokes:12, pinyin:'shàn', meaning:'善良 / goodness', etymology:'会意字，从"羊"从"言"，羊象征吉祥温顺，言表表达，合为说话温顺善良之意。', oracle:true },
+  '爱':{ radical:'心', strokes:10, pinyin:'ài', meaning:'爱 / love', etymology:'会意字，繁体"愛"从"心"从"受"，以心接受，表示爱护、喜爱之情。', oracle:false },
+  '天':{ radical:'大', strokes:4, pinyin:'tiān', meaning:'天空 / sky/heaven', etymology:'会意字，在"大"（人形）的头部加一横，指示头顶上方的天空，引申为天空、自然。', oracle:true },
+  '地':{ radical:'土', strokes:6, pinyin:'dì', meaning:'大地 / earth/ground', etymology:'形声字，从"土"表意，"也"表声，本义为大地、土地，与"天"相对。', oracle:false },
+  '风':{ radical:'风', strokes:4, pinyin:'fēng', meaning:'风 / wind', etymology:'形声兼象形字，甲骨文像凤鸟形，后借用表示风，加"虫"旁。', oracle:true },
+  '雨':{ radical:'雨', strokes:8, pinyin:'yǔ', meaning:'雨水 / rain', etymology:'象形字，像天空中降落雨滴的形状，上横为天，下点为雨滴。', oracle:true },
+  '云':{ radical:'云', strokes:4, pinyin:'yún', meaning:'云彩 / cloud', etymology:'象形字，甲骨文像云朵卷曲的形状，后来加"雨"头成"雲"，简化后恢复古形。', oracle:true },
+  '中':{ radical:'丨', strokes:4, pinyin:'zhōng', meaning:'中间 / middle', etymology:'象形字，像旗杆或箭矢穿过中心的形状，表示正中、居中之意。', oracle:true },
+  '大':{ radical:'大', strokes:3, pinyin:'dà', meaning:'大 / big', etymology:'象形字，像人张开双臂双腿站立的正面形象，表示宏大、高大。', oracle:true },
+  '小':{ radical:'小', strokes:3, pinyin:'xiǎo', meaning:'小 / small', etymology:'象形字，像细小沙粒或微小事物的形状，表示微小之意，与"大"相对。', oracle:true },
+  '龙':{ radical:'龙', strokes:5, pinyin:'lóng', meaning:'龙 / dragon', etymology:'象形字，甲骨文像一条张牙舞爪的巨龙形象，是中华文化中最重要的神兽符号。', oracle:true },
+};
+
+
+// IDS Decomposition
+var IDS = {
+  '明':['日','月'], '森':['木','木','木'], '淼':['水','水','水'],
+  '焱':['火','火','火'], '品':['口','口','口'], '晶':['日','日','日'],
+  '众':['人','人','人'], '林':['木','木'], '炎':['火','火'],
+  '双':['又','又'], '从':['人','人'], '好':['女','子'],
+  '鸣':['口','鸟'], '鲜':['鱼','羊'], '美':['羊','大'],
+  '善':['羊','言']
+};
+
+// Preset chips
+var PRESETS = ['山','水','火','木','日','月','人','心','道','美','爱','明','森','炎'];
+
+// State
+var currentScheme = 'parchment';
+var glyphSalt = 0; // increments each Generate for unique layout
+var glyphCache = {};
+var animTimer = null;
+
+
+// ── Weather + Solar Term ─────────────────────────────────────────────────────
+var weatherStr = '';
+(function(){
+  var SOLAR = ['小寒','大寒','立春','雨水','惊蛰','春分','清明','谷雨','立夏','小满','芒种','夏至','小暑','大暑','立秋','处暑','白露','秋分','寒露','霜降','立冬','小雪','大雪','冬至'];
+  var DAYS  = [6,20,4,19,6,21,5,20,6,21,6,21,7,23,7,23,8,23,8,23,7,22,7,22];
+  var now=new Date(), m=now.getMonth(), d=now.getDate();
+  var i1=m*2, i2=m*2+1;
+  var term = d<DAYS[i1] ? SOLAR[((m-1)*2+1+24)%24] : d<DAYS[i2] ? SOLAR[i1] : SOLAR[i2];
+  weatherStr = '节气 · '+term; // default until weather loads
+
+  var ctrl = typeof AbortController!=='undefined' ? new AbortController() : null;
+  var t = ctrl ? setTimeout(function(){ctrl.abort();},4000) : null;
+  fetch('https://wttr.in/?format=j1', ctrl?{signal:ctrl.signal}:{})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      clearTimeout(t);
+      var c=data.current_condition&&data.current_condition[0]; if(!c) return;
+      var code=parseInt(c.weatherCode||'113');
+      var e=code<=113?'☀':code<=116?'⛅':code<=119?'☁':code<=176?'🌦':code<=260?'🌫':code<=296?'🌧':code<=377?'🌨':code<=386?'⛈':'~';
+      weatherStr = term+' · '+e+' '+c.temp_C+'°C'+(c.windspeedKmph?' '+c.windspeedKmph+'km/h':'');
+    })
+    .catch(function(){clearTimeout(t);});
+})();
+
+// DOM refs
+var canvas = document.getElementById('glyph-canvas');
+var ctx = canvas.getContext('2d');
+// Retina / HiDPI support
+var DPR = window.devicePixelRatio || 1;
+var CW = 720, CH = 1020;
+canvas.width = CW * DPR;
+canvas.height = CH * DPR;
+// On mobile: let CSS max-width/max-height scale the canvas to fit
+// On desktop: set explicit size
+if (window.innerWidth > 700) {
+  canvas.style.width = CW + 'px';
+  canvas.style.height = CH + 'px';
+} else {
+  // CSS handles scaling via max-width:100% max-height:100%
+  canvas.style.width = '';
+  canvas.style.height = '';
+}
+ctx.scale(DPR, DPR);
+var charInput = document.getElementById('char-input');
+var status = document.getElementById('status');
+
+function setStatus(msg) { status.textContent = msg; }
+
+// ── Preset chips ──────────────────────────────────────────────────────────────
+var chipsEl = document.getElementById('preset-chips');
+PRESETS.forEach(function(ch) {
+  var btn = document.createElement('button');
+  btn.className = 'chip';
+  btn.textContent = ch;
+  btn.addEventListener('click', function() {
+    charInput.value = ch;
+    generate();
+  });
+  chipsEl.appendChild(btn);
+});
+
+// ── Scheme buttons ────────────────────────────────────────────────────────────
+document.getElementById('scheme-group').addEventListener('click', function(e) {
+  var btn = e.target.closest('[data-scheme]');
+  if (!btn) return;
+  document.querySelectorAll('#scheme-group .btn').forEach(function(b) { b.classList.remove('active'); });
+  btn.classList.add('active');
+  currentScheme = btn.dataset.scheme;
+  var ch = charInput.value.trim();
+  if (ch && glyphCache[ch]) {
+    drawPoster(ch, glyphCache[ch], ETYM[ch] || null);
+  }
+});
+
+// ── Theme toggle ──────────────────────────────────────────────────────────────
+var isDark = false;
+document.getElementById('btn-theme').addEventListener('click', function() {
+  isDark = !isDark;
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
+  this.textContent = isDark ? '☀' : '☽';
+});
+
+// ── Generate ──────────────────────────────────────────────────────────────────
+document.getElementById('btn-generate').addEventListener('click', generate);
+charInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') generate(); });
+
+function generate() {
+  var ch = charInput.value.trim();
+  if (!ch) { setStatus('Please enter a character.'); return; }
+  ch = ch[0];
+  charInput.value = ch;
+  glyphSalt = (glyphSalt + 1) % 100000;
+
+  // Build etymInfo: use embedded ETYM or fetch basic pinyin from CDN data
+  function withEtym(callback) {
+    if (ETYM[ch]) { callback(ETYM[ch]); return; }
+    // Get pinyin + stroke count from hanzi-writer data
+    fetchGlyph(ch, function(data) {
+      var etym = null;
+      if (data) {
+        etym = {
+          pinyin: (data.pinyin && data.pinyin.length) ? data.pinyin.join('/') : '',
+          meaning: '',
+          strokes: data.strokes ? data.strokes.length : 0
+        };
+      }
+      callback(etym);
+    }, true);
+  }
+
+  setStatus('Loading...');
+  withEtym(function(etymInfo) {
+    fetchGlyph(ch, function(data) {
+      if (!data) {
+        setStatus('No stroke data for this character.');
+        drawPoster(ch, null, etymInfo);
+        return;
+      }
+      setStatus('');
+      var animOn = document.getElementById('tog-anim').checked;
+      if (animOn) {
+        animatePoster(ch, data, etymInfo);
+      } else {
+        drawPoster(ch, data, etymInfo);
+      }
+    });
+  });
+}
+
+// ── Fetch glyph data ──────────────────────────────────────────────────────────
+function fetchGlyph(ch, callback, skipCache) {
+  if (!skipCache && glyphCache[ch] !== undefined) {
+    callback(glyphCache[ch]);
+    return;
+  }
+  var codepoint = ch.codePointAt(0).toString(16).toUpperCase();
+  var url = 'https://cdn.jsdelivr.net/npm/hanzi-writer-data@latest/' + encodeURIComponent(ch) + '.json';
+  fetch(url)
+    .then(function(r) { return r.ok ? r.json() : Promise.reject('HTTP ' + r.status); })
+    .then(function(data) {
+      glyphCache[ch] = data;
+      callback(data);
+    })
+    .catch(function() {
+      glyphCache[ch] = null;
+      callback(null);
+    });
+}
+
+// ── Ink wash renderer: splatter dots inside stroke path — sumi-e style ────────
+// depthFocus: 0.0=far(sparse,small dots) 1.0=near(dense,larger dots)
+function renderInkStroke(ctx, strokePath, cx, cy, size, inkCol, holeSeed, depthFocus, colorPalette) {
+  if (depthFocus === undefined) depthFocus = 0.7;
+  // depthFocus controls: dot density keep%, dot size, jitter amount
+  // fontChar: if set, use font glyph pixels masked by strokePath (method Y)
+
+  // 1. Build pixel mask on offscreen canvas — cap at 512px to avoid huge allocations
+  var sampleSz = Math.min(size, 512);
+  var szScale = size / sampleSz;
+  var ofc = document.createElement('canvas');
+  ofc.width = sampleSz; ofc.height = sampleSz;
+  var ofx = ofc.getContext('2d');
+
+    // Default: use hanzi-writer stroke path directly
+    ofx.save();
+    ofx.translate(sampleSz/2, sampleSz/2);
+    ofx.scale(sampleSz/1024, -sampleSz/1024);
+    ofx.translate(-512, -512);
+    ofx.fillStyle = '#000';
+    try { ofx.fill(new Path2D(strokePath)); } catch(e) {}
+    ofx.restore();
+
+  var imgData = ofx.getImageData(0, 0, sampleSz, sampleSz);
+
+  // 2. PRNG
+  var hs = holeSeed;
+  function hr() { hs=(hs*1664525+1013904223)&0x7fffffff; return hs/0x7fffffff; }
+
+  // 3. Draw ink wash dots — adaptive step keeps total dots ≤ ~8000
+  var step = 1; // sampleSz capped at 512 so max ~512*512*keepRate pixels
+  var ox = cx - size/2;
+  var oy = cy - size/2;
+
+  // If colorPalette provided and color ink is on, pick a hue for this stroke
+  var useColor = colorPalette && document.getElementById('tog-color') && document.getElementById('tog-color').checked;
+  var inkR=26, inkG=18, inkB=8;
+  var m = inkCol.match(/rgb\((\d+),(\d+),(\d+)\)/);
+  if (m) { inkR=+m[1]; inkG=+m[2]; inkB=+m[3]; }
+  if (useColor && colorPalette.length) {
+    // Pick color from palette using holeSeed
+    var ci = holeSeed % colorPalette.length;
+    var hex = colorPalette[ci].replace('#','');
+    inkR=parseInt(hex.slice(0,2),16); inkG=parseInt(hex.slice(2,4),16); inkB=parseInt(hex.slice(4,6),16);
+  }
+
+  for (var py = 0; py < sampleSz; py += step) {
+    for (var px = 0; px < sampleSz; px += step) {
+      var idx = (py * sampleSz + px) * 4;
+      if (imgData.data[idx+3] < 60) continue;
+
+      var edgeFactor = imgData.data[idx+3] / 255;
+
+      // Random ink dot properties
+      var rnd = hr();
+      // depthFocus: near=dense+large, far=sparse+small
+      var keepRate = 0.2 + depthFocus * 0.6;   // 0.2 (far/sparse) → 0.8 (near/dense)
+      if (rnd > keepRate) continue;
+
+      // Dot radius: near=larger, far=tiny
+      var baseR = (0.2 + depthFocus*0.5) + hr()*(0.3 + depthFocus*0.4);
+      var r = baseR * (0.6 + edgeFactor*0.4);
+
+      // Blur scatter: far strokes scatter outward from stroke center
+      // edgeFactor≈0 means we're near the stroke edge → scatter most
+      var blurAmount = (1 - depthFocus) * size * 0.18;
+      var edgeScatter = (1 - edgeFactor);
+      var scatterR = blurAmount * (edgeScatter * 0.7 + 0.3);
+      // Scale sample px/py to real size coords
+      var rpx = px * szScale, rpy = py * szScale;
+      var dxC = rpx - size/2, dyC = rpy - size/2;
+      var distC = Math.sqrt(dxC*dxC + dyC*dyC) || 1;
+      var scatterX = (dxC/distC) * scatterR * (0.4 + hr()*0.6);
+      var scatterY = (dyC/distC) * scatterR * (0.4 + hr()*0.6);
+
+      var jitter = r * (0.8 + (1-depthFocus)*1.5);
+      var jx = scatterX + (hr()-0.5)*jitter;
+      var jy = scatterY + (hr()-0.5)*jitter;
+
+      var alpha = (0.3 + depthFocus*0.4 + hr()*0.3) * (0.5 + edgeFactor*0.5);
+
+      var cr = Math.min(255, inkR + Math.round((hr()-0.5)*20));
+      var cg = Math.min(255, inkG + Math.round((hr()-0.5)*12));
+      var cb = Math.min(255, inkB + Math.round((hr()-0.5)*8));
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = 'rgb('+cr+','+cg+','+cb+')';
+      ctx.beginPath();
+      if (hr() > 0.85) {
+        ctx.ellipse(ox+rpx+jx, oy+rpy+jy, r*1.4, r*0.5, hr()*Math.PI, 0, Math.PI*2);
+      } else {
+        ctx.arc(ox+rpx+jx, oy+rpy+jy, r, 0, Math.PI*2);
+      }
+      ctx.fill();
+    }
+  }
+  ctx.globalAlpha = 1;
+
+  // 4. Edge splatter: ink drops that escaped the stroke boundary
+  var nSplat = 6 + Math.floor(hr()*10);
+  for (var k=0; k<nSplat; k++) {
+    // Find a random edge pixel and shoot out from it
+    var ex = hr()*size, ey = hr()*size;
+    var angle = hr()*Math.PI*2;
+    var dist = size*(0.04 + hr()*0.12);
+    var spx = ox + ex + Math.cos(angle)*dist;
+    var spy = oy + ey + Math.sin(angle)*dist;
+    var spr = 1 + hr()*3;
+    ctx.globalAlpha = 0.08 + hr()*0.2;
+    ctx.fillStyle = 'rgb('+inkR+','+inkG+','+inkB+')';
+    ctx.beginPath(); ctx.arc(spx, spy, spr, 0, Math.PI*2); ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+// ── Draw poster — ink stamp style ────────────────────────────────────────────
+function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
+  if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+  var sc = SCHEMES[currentScheme];
+  var W = 720, H = 1020;
+  ctx.clearRect(0, 0, W, H);
+
+  // ── Ink color system ────────────────────────────────────────────────────────
+  var inkPalettes = {
+    parchment: { dark:[26,18,8],    light:[80,50,20]  },
+    ink:       { dark:[10,8,4],     light:[40,30,10]  },
+    night:     { dark:[192,216,255], light:[96,144,208] },
+    minimal:   { dark:[17,17,17],   light:[136,136,136] },
+    crimson:   { dark:[255,68,85],  light:[180,20,40]  },
+    forest:    { dark:[125,220,138],light:[40,120,55]  },
+    dusk:      { dark:[224,170,255],light:[140,80,200] },
+    paper:     { dark:[26,42,74],   light:[80,110,160] }
+  };
+  var ip = inkPalettes[currentScheme] || inkPalettes.parchment;
+
+  function inkColor(t) {
+    var r = Math.round(ip.light[0] + (ip.dark[0] - ip.light[0]) * t);
+    var g = Math.round(ip.light[1] + (ip.dark[1] - ip.light[1]) * t);
+    var b = Math.round(ip.light[2] + (ip.dark[2] - ip.light[2]) * t);
+    return 'rgb(' + r + ',' + g + ',' + b + ')';
+  }
+
+  // ── Background: rice paper ──────────────────────────────────────────────────
+  ctx.fillStyle = sc.bg;
+  ctx.fillRect(0, 0, W, H);
+
+  // Grain texture
+  var grainSeed = 99991;
+  function gr() { grainSeed = (grainSeed * 1664525 + 1013904223) & 0x7fffffff; return grainSeed / 0x7fffffff; }
+  ctx.save();
+  for (var gi = 0; gi < 1200; gi++) {
+    var gx = gr() * W;
+    var gy = gr() * H;
+    var ga = 0.015 + gr() * 0.035;
+    ctx.fillStyle = 'rgba(80,50,20,' + ga + ')';
+    ctx.fillRect(gx, gy, 1, 1);
+  }
+  ctx.restore();
+
+  // Subtle horizontal fiber lines
+  ctx.save();
+  ctx.strokeStyle = 'rgba(120,80,40,0.035)';
+  ctx.lineWidth = 0.5;
+  for (var hl = 0; hl < H; hl += 22) {
+    ctx.beginPath(); ctx.moveTo(0, hl); ctx.lineTo(W, hl); ctx.stroke();
+  }
+  ctx.restore();
+
+  // ── Seeded random for stable stroke layout ──────────────────────────────────
+  var seed = ch.codePointAt(0) + glyphSalt * 999983;
+  function sr() { seed = (seed * 1664525 + 1013904223) & 0x7fffffff; return seed / 0x7fffffff; }
+
+  var strokes = (data && data.strokes) ? data.strokes : [];
+  var strokeLimit = (_strokeLimit !== undefined) ? _strokeLimit : strokes.length;
+  var alphaScale = (_dotAlphaScale !== undefined) ? _dotAlphaScale : 1.0;
+  var N = strokes.length;
+
+  // ── Layout: force-repulsion scatter ────────────────────────────────────────
+  // Strokes start random, then repel each other for even natural spread
+  var layout = [];
+  if (N > 0) {
+    var margin = 60;
+    var areaW = W - margin*2, areaH = (H-56) - margin*2;
+    // Pick one hero stroke — seeded so it's stable per character
+    var heroIdx = Math.floor(sr() * N);
+    // Init random positions
+    for (var li = 0; li < N; li++) {
+      var isHero = (li === heroIdx);
+      // Hero: 65–85% of canvas short side; others: 30–55%
+      var lsz = isHero
+        ? Math.round(Math.min(W, H-56) * (3.2 + sr()*1.3))
+        : Math.round(Math.min(W, H-56) * (0.55 + sr()*0.55));
+      layout.push({
+        cx: margin + sr()*areaW,
+        cy: margin + sr()*areaH,
+        size: lsz,
+        depth: 0.3 + sr()*0.7,
+        hero: isHero
+      });
+    }
+    // Repulsion iterations — hero has stronger personal space
+    var minDist = Math.min(W, H-56) * 0.22;
+    for (var iter = 0; iter < 80; iter++) {
+      for (var a = 0; a < N; a++) {
+        var fx = 0, fy = 0;
+        for (var b = 0; b < N; b++) {
+          if (a === b) continue;
+          var dx = layout[a].cx - layout[b].cx;
+          var dy = layout[a].cy - layout[b].cy;
+          var dist = Math.sqrt(dx*dx + dy*dy) || 1;
+          if (dist < minDist) {
+            var force = (minDist - dist) / minDist * 0.5;
+            fx += (dx/dist) * force;
+            fy += (dy/dist) * force;
+          }
+        }
+        // All strokes: center stays within canvas (bleed OK, center not)
+        var sl = layout[a];
+        var edgeM = sl.hero ? sl.size * 0.15 : Math.min(sl.size * 0.35, margin);
+        sl.cx = Math.max(edgeM, Math.min(W - edgeM, sl.cx + fx*minDist));
+        sl.cy = Math.max(edgeM, Math.min(H-56 - edgeM, sl.cy + fy*minDist));
+      }
+    }
+  }
+
+  if (strokes.length > 0) {
+    // ── Ink stamp pass ────────────────────────────────────────────────────────
+    for (var si = 0; si < strokeLimit; si++) {
+      var sl = layout[si];
+      var holeSeed = seed + si * 7919;
+      // Each stroke gets random depth focus — creates bokeh/depth-of-field feel
+      var depthFocus = 0.2 + sr() * 0.8;
+      renderInkStroke(ctx, strokes[si], sl.cx, sl.cy, sl.size, inkColor(sl.depth), holeSeed, depthFocus, sc.palette);
+    }
+  } else {
+    // Fallback: font render when no stroke data
+    ctx.save();
+    ctx.font = '220px "Noto Serif SC", serif';
+    ctx.fillStyle = inkColor(0.7);
+    ctx.globalAlpha = 0.15;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(ch, W / 2, H / 2);
+    ctx.restore();
+  }
+
+  // ── Flow lines — 国画山水横向粒子流线 ──────────────────────────────────────
+  if (document.getElementById('tog-fog') && document.getElementById('tog-fog').checked) {
+    var fogSeed = ch.codePointAt(0) * 999983;
+    function fg() { fogSeed=(fogSeed*1664525+1013904223)&0x7fffffff; return fogSeed/0x7fffffff; }
+    var fogR=ip.dark[0], fogG=ip.dark[1], fogB=ip.dark[2];
+
+    ctx.save();
+    var nLines = 2 + Math.floor(fg()*2); // 2–3 lines
+    for (var li=0; li<nLines; li++) {
+      // Each line: a bezier path sampled into particles
+      var baseY = 30 + fg()*(H-86);
+      var nSeg = 4 + Math.floor(fg()*3);
+      var segW = (W+40) / nSeg;
+
+      // Build smooth catmull-rom style control points
+      // Key: control points inherit velocity from previous segment — no sharp corners
+      var pts = [{x:-20, y:baseY}];
+      var cy_cur = baseY;
+      var vy = (fg()-0.5)*80; // wilder initial velocity
+      for (var si3=0; si3<nSeg; si3++) {
+        var x0 = -20 + si3*segW;
+        vy += (fg()-0.5)*60; // more random drift per segment
+        vy *= 0.65; // dampen but keep some momentum
+        var endY = cy_cur + vy;
+        // Control points follow the flow direction — smooth tangent continuity
+        pts.push({
+          cp1x: x0+segW*0.33, cp1y: cy_cur + vy*0.33,
+          cp2x: x0+segW*0.66, cp2y: endY - vy*0.33,
+          x: x0+segW, y: endY
+        });
+        cy_cur = endY;
+      }
+
+      // Sample points along bezier path and draw tiny particles
+      var totalPts = 400 + Math.floor(fg()*150); // very dense
+      var lineAlpha = 0.15 + fg()*0.15;           // clearly visible
+      var dotR = 0.3 + fg()*0.6;
+
+      for (var pi2=0; pi2<totalPts; pi2++) {
+        var tGlobal = pi2 / totalPts;
+        var segIdx = Math.floor(tGlobal * nSeg);
+        var tSeg = (tGlobal * nSeg) - segIdx;
+        if (segIdx >= pts.length-1) segIdx = pts.length-2;
+
+        var p0 = pts[segIdx], p1 = pts[segIdx+1];
+        var mt = 1-tSeg;
+        var bx = mt*mt*mt*p0.x + 3*mt*mt*tSeg*p1.cp1x + 3*mt*tSeg*tSeg*p1.cp2x + tSeg*tSeg*tSeg*p1.x;
+        var by = mt*mt*mt*p0.y + 3*mt*mt*tSeg*p1.cp1y + 3*mt*tSeg*tSeg*p1.cp2y + tSeg*tSeg*tSeg*p1.y;
+
+        var edgeFade = Math.sin(tGlobal * Math.PI);
+        // Wider scatter with gaussian-like falloff — dense core, soft diffuse edge
+        var sc1 = (fg()-0.5)*3;   // tight core
+        var sc2 = (fg()-0.5)*10;  // occasional outlier
+        var scatter = sc1 + (fg()>0.75 ? sc2 : 0);
+        var pAlpha = lineAlpha * edgeFade * (0.45 + fg()*0.55);
+        var pr = dotR * (0.4 + fg()*1.0);
+
+        ctx.globalAlpha = pAlpha;
+        ctx.fillStyle = 'rgb('+fogR+','+fogG+','+fogB+')';
+        ctx.beginPath();
+        ctx.arc(bx + (fg()-0.5)*2, by + scatter, pr, 0, Math.PI*2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  // ── Bottom strip ─────────────────────────────────────────────────────────────
+  var stripH = 96;
+  var stripY = H - stripH;
+  // Strip background: semi-transparent ink color
+  ctx.save();
+  ctx.fillStyle = inkColor(0.95);
+  ctx.globalAlpha = 0.88;
+  ctx.fillRect(0, stripY, W, stripH);
+  ctx.restore();
+
+  // Large character ghost — left side of strip, top half only
+  ctx.save();
+  ctx.font = 'bold 36px "Noto Serif SC", serif';
+  ctx.fillStyle = sc.bg;
+  ctx.globalAlpha = 0.9;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(ch, 20, stripY + 26);
+  ctx.restore();
+
+  // Pinyin + meaning — row 1
+  ctx.save();
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  var midX = 72;
+  if (etymInfo && etymInfo.pinyin) {
+    ctx.font = '500 15px Outfit, sans-serif';
+    ctx.fillStyle = sc.bg;
+    ctx.globalAlpha = 0.85;
+    ctx.fillText(etymInfo.pinyin, midX, stripY + 16);
+  }
+  if (etymInfo && etymInfo.meaning) {
+    ctx.font = '300 12px Outfit, "Noto Sans SC", sans-serif';
+    ctx.fillStyle = sc.bg;
+    ctx.globalAlpha = 0.55;
+    var meaning = etymInfo.meaning.length > 32 ? etymInfo.meaning.slice(0,30)+'…' : etymInfo.meaning;
+    ctx.fillText(meaning, midX, stripY + 34);
+  }
+  ctx.restore();
+
+  // Right side row 1: stroke count
+  ctx.save();
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  var strokeCount = (data && data.strokes) ? data.strokes.length : (etymInfo && etymInfo.strokes ? etymInfo.strokes : 0);
+  if (strokeCount) {
+    ctx.font = '500 13px Outfit, sans-serif';
+    ctx.fillStyle = sc.bg;
+    ctx.globalAlpha = 0.55;
+    ctx.fillText(strokeCount + ' strokes', W - 16, stripY + 16);
+  }
+  ctx.restore();
+
+  // Row 2: 节气 · weather — monospace terminal feel
+  ctx.save();
+  ctx.fillStyle = sc.bg;
+  ctx.globalAlpha = 0.15;
+  ctx.fillRect(0, stripY + 54, W, 1); // hairline divider
+  ctx.restore();
+  ctx.save();
+  ctx.font = '300 11px "Courier New", "Noto Sans Mono", monospace';
+  ctx.fillStyle = sc.bg;
+  ctx.globalAlpha = 0.50;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(weatherStr, 20, stripY + 76);
+  ctx.textAlign = 'right';
+  ctx.globalAlpha = 0.20;
+  ctx.font = '300 9px Outfit, sans-serif';
+  ctx.fillText('Glyph It', W - 16, stripY + 76);
+  ctx.restore();
+}
+
+// ── Animate strokes — reveal one by one with dot fade-in ─────────────────────
+function animatePoster(ch, data, etymInfo) {
+  if (!data || !data.strokes || data.strokes.length === 0) {
+    drawPoster(ch, data, etymInfo);
+    return;
+  }
+  var total = data.strokes.length;
+  var W = 720, H = 1020;
+  var sc2 = SCHEMES[currentScheme];
+
+  // Pre-compute layout — force-repulsion (same seed as drawPoster)
+  var seed2 = ch.codePointAt(0) + glyphSalt * 999983;
+  function sr2() { seed2=(seed2*1664525+1013904223)&0x7fffffff; return seed2/0x7fffffff; }
+  var N = total;
+  var margin2=60, areaW2=W-margin2*2, areaH2=(H-56)-margin2*2;
+  // MUST match drawPoster exactly — heroIdx consumes one sr() first
+  var heroIdx2 = Math.floor(sr2()*N);
+  var preLayout = [];
+  for (var li2=0; li2<N; li2++) {
+    var isHero2=(li2===heroIdx2);
+    var lsz2=isHero2
+      ? Math.round(Math.min(W,H-56)*(3.2+sr2()*1.3))
+      : Math.round(Math.min(W,H-56)*(0.55+sr2()*0.55));
+    preLayout.push({cx:margin2+sr2()*areaW2, cy:margin2+sr2()*areaH2, size:lsz2, depth:0.3+sr2()*0.7, hero:isHero2});
+  }
+  var minDist2=Math.min(W,H-56)*0.22;
+  for (var iter2=0;iter2<80;iter2++){
+    for(var a2=0;a2<N;a2++){
+      var fx2=0,fy2=0;
+      for(var b2=0;b2<N;b2++){
+        if(a2===b2) continue;
+        var dx2=preLayout[a2].cx-preLayout[b2].cx, dy2=preLayout[a2].cy-preLayout[b2].cy;
+        var dist2=Math.sqrt(dx2*dx2+dy2*dy2)||1;
+        if(dist2<minDist2){var f2=(minDist2-dist2)/minDist2*0.5;fx2+=(dx2/dist2)*f2;fy2+=(dy2/dist2)*f2;}
+      }
+      var pl2=preLayout[a2];
+      var edgeM2=pl2.hero?pl2.size*0.15:Math.min(pl2.size*0.35,margin2);
+      pl2.cx=Math.max(edgeM2,Math.min(W-edgeM2,pl2.cx+fx2*minDist2));
+      pl2.cy=Math.max(edgeM2,Math.min(H-56-edgeM2,pl2.cy+fy2*minDist2));
+    }
+  }
+  // depthFocus is drawn from same seed sequence in drawPoster's render loop
+  // consume same sr() calls: in drawPoster, depthFocus = 0.2 + sr()*0.8 per stroke
+  var preFocus = [];
+  for (var fi=0; fi<N; fi++) { preFocus.push(0.2+sr2()*0.8); }
+
+  var ip2={parchment:{dark:[26,18,8],light:[80,50,20]},ink:{dark:[10,8,4],light:[40,30,10]},night:{dark:[192,216,255],light:[96,144,208]},minimal:{dark:[17,17,17],light:[136,136,136]},crimson:{dark:[255,68,85],light:[180,20,40]},forest:{dark:[125,220,138],light:[40,120,55]},dusk:{dark:[224,170,255],light:[140,80,200]},paper:{dark:[26,42,74],light:[80,110,160]}}[currentScheme]||{dark:[26,18,8],light:[80,50,20]};
+  function inkColor2(t){return 'rgb('+Math.round(ip2.light[0]+(ip2.dark[0]-ip2.light[0])*t)+','+Math.round(ip2.light[1]+(ip2.dark[1]-ip2.light[1])*t)+','+Math.round(ip2.light[2]+(ip2.dark[2]-ip2.light[2])*t)+')';}
+
+  function drawBg() {
+    ctx.fillStyle=sc2.bg; ctx.fillRect(0,0,W,H);
+    var gs=99991; function gr2(){gs=(gs*1664525+1013904223)&0x7fffffff;return gs/0x7fffffff;}
+    for(var gi=0;gi<1200;gi++){ctx.fillStyle='rgba(80,50,20,'+(0.015+gr2()*0.035)+')';ctx.fillRect(gr2()*W,gr2()*H,1,1);}
+  }
+
+  function drawOverlay() {
+    var stripH=96, stripY=H-stripH, sc3=SCHEMES[currentScheme];
+    ctx.save(); ctx.fillStyle=inkColor2(0.95); ctx.globalAlpha=0.88; ctx.fillRect(0,stripY,W,stripH); ctx.restore();
+    ctx.save(); ctx.font='bold 42px "Noto Serif SC",serif'; ctx.fillStyle=sc3.bg; ctx.globalAlpha=0.9; ctx.textAlign='left'; ctx.textBaseline='middle'; ctx.fillText(ch,20,stripY+26); ctx.restore();
+    if(etymInfo&&etymInfo.pinyin){ctx.save();ctx.font='500 13px Outfit,sans-serif';ctx.fillStyle=sc3.bg;ctx.globalAlpha=0.85;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(etymInfo.pinyin,72,stripY+16);ctx.restore();}
+    if(etymInfo&&etymInfo.meaning){ctx.save();ctx.font='300 12px Outfit,"Noto Sans SC",sans-serif';ctx.fillStyle=sc3.bg;ctx.globalAlpha=0.55;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(etymInfo.meaning.slice(0,30),72,stripY+34);ctx.restore();}
+    var sc2n=data?data.strokes.length:0; if(sc2n){ctx.save();ctx.font='500 11px Outfit,sans-serif';ctx.fillStyle=sc3.bg;ctx.globalAlpha=0.55;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText(sc2n+' strokes',W-16,stripY+14);ctx.restore();}
+    ctx.save();ctx.fillStyle=sc3.bg;ctx.globalAlpha=0.15;ctx.fillRect(0,stripY+54,W,1);ctx.restore();
+    ctx.save();ctx.font='300 11px "Courier New","Noto Sans Mono",monospace';ctx.fillStyle=sc3.bg;ctx.globalAlpha=0.50;ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(weatherStr,20,stripY+76);ctx.restore();
+    ctx.save();ctx.font='300 9px Outfit,sans-serif';ctx.fillStyle=sc3.bg;ctx.globalAlpha=0.20;ctx.textAlign='right';ctx.textBaseline='middle';ctx.fillText('Glyph It',W-16,stripY+76);ctx.restore();
+  }
+
+  // ── Pre-sample all stroke pixels once ──────────────────────────────────────
+  // Each stroke: array of {tx,ty,r,al,cr,cg,cb} — target positions
+  var strokeDots = [];
+  for (var si2=0; si2<total; si2++) {
+    var sl2=preLayout[si2];
+    var focus2=preFocus[si2];
+    // Cap sample canvas at 512px max — hero strokes are huge but we don't need all pixels
+    var isHero2=(si2===heroIdx2);
+    var sampleSize = Math.min(sl2.size, 512);
+    var sizeScale = sl2.size / sampleSize;
+    var ofc2=document.createElement('canvas');
+    ofc2.width=sampleSize; ofc2.height=sampleSize;
+    var ofx2=ofc2.getContext('2d');
+    ofx2.save(); ofx2.translate(sampleSize/2,sampleSize/2);
+    ofx2.scale(sampleSize/1024,-sampleSize/1024);
+    ofx2.translate(-512,-512);
+    ofx2.fillStyle='#000';
+    try{ofx2.fill(new Path2D(data.strokes[si2]));}catch(e){}
+    ofx2.restore();
+    var imd=ofx2.getImageData(0,0,sampleSize,sampleSize);
+    var hs3=seed2+si2*7919; function hr3(){hs3=(hs3*1664525+1013904223)&0x7fffffff;return hs3/0x7fffffff;}
+    var dots=[];
+    // Adaptive step: keep total dots ≤ 8000 per stroke regardless of size
+    // skipRate=1: full density (sampleSize already capped at 512, so max ~512*512*keepRate dots)
+    var skipRate = 1;
+    var blurAmt2=(1-focus2)*sl2.size*0.18;
+    // Color ink: per-stroke hue from palette if toggle is on
+    var useColor2 = document.getElementById('tog-color') && document.getElementById('tog-color').checked;
+    var sc2pal = SCHEMES[currentScheme].palette || [];
+    var ip2base = ip2.dark;
+    if (useColor2 && sc2pal.length) {
+      var ci2 = (seed2 + si2*7919) % sc2pal.length;
+      var hex2 = sc2pal[ci2].replace('#','');
+      ip2base = [parseInt(hex2.slice(0,2),16), parseInt(hex2.slice(2,4),16), parseInt(hex2.slice(4,6),16)];
+    }
+    var ip2r=ip2base[0], ip2g=ip2base[1], ip2b=ip2base[2];
+    // Hero gets higher keep rate for denser dots
+    var keepR2 = isHero2 ? (0.5 + focus2*0.45) : (0.2 + focus2*0.55);
+    var ox2=sl2.cx-sl2.size/2, oy2=sl2.cy-sl2.size/2;
+    for(var py2=0;py2<sampleSize;py2+=skipRate){
+      for(var px3=0;px3<sampleSize;px3+=skipRate){
+        var pidx2=(py2*sampleSize+px3)*4;
+        if(imd.data[pidx2+3]<60) continue;
+        if(hr3()>keepR2) continue;
+        var ef2=imd.data[pidx2+3]/255;
+        var br2=(0.2+focus2*0.5)+hr3()*(0.3+focus2*0.4);
+        var rr2=br2*(0.6+ef2*0.4)*Math.max(1,sizeScale*0.5); // scale dot size with stroke
+        var esc2=1-ef2;
+        var scR2=blurAmt2*(esc2*0.7+0.3);
+        // Scale sample coords back to real stroke size
+        var realPx=px3*sizeScale, realPy=py2*sizeScale;
+        var dxC2=realPx-sl2.size/2,dyC2=realPy-sl2.size/2;
+        var dc2=Math.sqrt(dxC2*dxC2+dyC2*dyC2)||1;
+        var scX2=(dxC2/dc2)*scR2*(0.4+hr3()*0.6);
+        var scY2=(dyC2/dc2)*scR2*(0.4+hr3()*0.6);
+        var jit2=rr2*(0.8+(1-focus2)*1.5);
+        var startAngle = hr3()*Math.PI*2;
+        var startDist = Math.sqrt(hr3()) * Math.min(W,H-56)*0.4;
+        dots.push({
+          tx: ox2+realPx+scX2+(hr3()-0.5)*jit2,
+          ty: oy2+realPy+scY2+(hr3()-0.5)*jit2,
+          sx: W*0.5 + Math.cos(startAngle)*startDist,
+          sy: (H-56)*0.5 + Math.sin(startAngle)*startDist,
+          r:  rr2,
+          al: (0.3+focus2*0.4+hr3()*0.3)*(0.5+ef2*0.5),
+          cr: Math.min(255,ip2r+Math.round((hr3()-0.5)*20)),
+          cg: Math.min(255,ip2g+Math.round((hr3()-0.5)*12)),
+          cb: Math.min(255,ip2b+Math.round((hr3()-0.5)*8)),
+          elong: hr3()>0.85, angle: hr3()*Math.PI,
+          wx: (hr3()-0.5)*W*0.15,
+          wy: (hr3()-0.5)*(H-56)*0.10,
+          phase: hr3()*0.35
+        });
+      }
+    }
+    strokeDots.push(dots);
+  }
+
+  // ── Settled canvas: cache completed strokes so we don't redraw all dots every frame ──
+  var settledCanvas = document.createElement('canvas');
+  settledCanvas.width = W; settledCanvas.height = H;
+  var settledCtx = settledCanvas.getContext('2d');
+
+  function drawStrokeDots(targetCtx, si3, t) {
+    var dots=strokeDots[si3];
+    var et = t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t+2,3)/2;
+    var spring = t > 0.85 ? 1 + Math.sin((t-0.85)/0.15*Math.PI)*0.03 : 1;
+    for(var di=0;di<dots.length;di++){
+      var d=dots[di];
+      var tp = Math.max(0, t - d.phase);
+      var windEnv = Math.sin(Math.min(tp,1)*Math.PI);
+      var curX = (d.sx + (d.tx - d.sx)*et*spring) + d.wx*windEnv*0.5;
+      var curY = (d.sy + (d.ty - d.sy)*et*spring) + d.wy*windEnv*0.5;
+      targetCtx.globalAlpha = d.al * Math.min(t*5,1);
+      targetCtx.fillStyle='rgb('+d.cr+','+d.cg+','+d.cb+')';
+      targetCtx.beginPath();
+      if(d.elong){targetCtx.ellipse(curX,curY,d.r*1.4,d.r*0.5,d.angle,0,Math.PI*2);}
+      else{targetCtx.arc(curX,curY,d.r,0,Math.PI*2);}
+      targetCtx.fill();
+    }
+    targetCtx.globalAlpha=1;
+  }
+
+  function settleStroke(si3) {
+    // Bake finished stroke onto settledCanvas at t=1
+    drawStrokeDots(settledCtx, si3, 1.0);
+  }
+
+  // All strokes launch simultaneously with random delay + duration
+  var strokeStates = [];
+  var sr3seed = seed2 + 9999;
+  function sr3(){sr3seed=(sr3seed*1664525+1013904223)&0x7fffffff;return sr3seed/0x7fffffff;}
+  for (var ki=0; ki<total; ki++) {
+    strokeStates.push({
+      startTime: null,
+      delay: sr3() * 600,
+      dur:   800 + sr3() * 500,
+      settled: false
+    });
+  }
+  var allDone = false;
+
+  function allGatherFrame(ts) {
+    if (allDone) return;
+    // Composite: bg + settled cache + active strokes
+    drawBg();
+    ctx.drawImage(settledCanvas, 0, 0); // paste already-settled strokes (fast)
+
+    var finishedCount = 0;
+    for (var ai=0; ai<total; ai++) {
+      var st = strokeStates[ai];
+      if (st.startTime === null) st.startTime = ts;
+      var elapsed = ts - st.startTime - st.delay;
+      if (elapsed < 0) { continue; }
+      var t = Math.min(elapsed / st.dur, 1);
+
+      if (t >= 1) {
+        if (!st.settled) {
+          st.settled = true;
+          settleStroke(ai); // bake into settled canvas once
+        }
+        finishedCount++;
+      } else {
+        drawStrokeDots(ctx, ai, t); // only draw animating strokes live
+      }
+    }
+
+    drawOverlay();
+
+    if (finishedCount >= total) {
+      allDone = true;
+      drawPoster(ch, data, etymInfo);
+      return;
+    }
+    animTimer = requestAnimationFrame(allGatherFrame);
+  }
+
+  drawBg(); drawOverlay();
+  animTimer = requestAnimationFrame(allGatherFrame);
+}
+
+// ── Wrap text helper ──────────────────────────────────────────────────────────
+function wrapText(ctx, text, x, y, maxWidth, lineH) {
+  var words = text.split('');
+  var line = '';
+  var lineY = y;
+  for (var i = 0; i < words.length; i++) {
+    var testLine = line + words[i];
+    var metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && line.length > 0) {
+      ctx.fillText(line, x, lineY);
+      line = words[i];
+      lineY += lineH;
+    } else {
+      line = testLine;
+    }
+  }
+  if (line) ctx.fillText(line, x, lineY);
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+function exportPNG(scale) {
+  var ch = charInput.value.trim() || 'glyph';
+  scale = scale || 1;
+  if (scale === 1) {
+    var link = document.createElement('a');
+    link.download = 'glyph-' + ch + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    return;
+  }
+  // For 2x/4x: draw to a larger offscreen canvas
+  var W = 720, H = 1020;
+  var oc = document.createElement('canvas');
+  oc.width = W * scale; oc.height = H * scale;
+  var octx = oc.getContext('2d');
+  octx.scale(scale, scale);
+  // Copy current canvas content scaled up
+  octx.drawImage(canvas, 0, 0, W * DPR, H * DPR, 0, 0, W, H);
+  var link = document.createElement('a');
+  link.download = 'glyph-' + ch + '-' + scale + 'x.png';
+  link.href = oc.toDataURL('image/png');
+  link.click();
+}
+document.getElementById('btn-export-hdr').addEventListener('click', function(){ exportPNG(1); });
+document.getElementById('btn-export-panel').addEventListener('click', function(){ exportPNG(1); });
+document.getElementById('btn-export-2x').addEventListener('click', function(){ exportPNG(2); });
+document.getElementById('btn-export-4x').addEventListener('click', function(){ exportPNG(4); });
+document.getElementById('btn-export-svg').addEventListener('click', function(){
+  var ch = charInput.value.trim() || 'glyph';
+  var W = 720, H = 1020;
+  var pngData = canvas.toDataURL('image/png');
+  var svg = '<?xml version="1.0" encoding="UTF-8"?>\n' +
+    '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" ' +
+    'width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'">\n' +
+    '<image width="'+W+'" height="'+H+'" xlink:href="'+pngData+'"/>\n' +
+    '</svg>';
+  var blob = new Blob([svg], {type:'image/svg+xml'});
+  var link = document.createElement('a');
+  link.download = 'glyph-' + ch + '.svg';
+  link.href = URL.createObjectURL(blob);
+  link.click();
+  setTimeout(function(){ URL.revokeObjectURL(link.href); }, 1000);
+});
+
+// ── Initial render ────────────────────────────────────────────────────────────
+(function() {
+  var initChar = '字';
+  charInput.value = initChar;
+  setStatus('Loading...');
+  fetchGlyph(initChar, function(data) {
+    setStatus('');
+    drawPoster(initChar, data, ETYM[initChar] || null);
+  });
+})();
+
+})();
+</script>
+</body>
+</html>
+<!-- deploy trigger 2026年 3月26日 星期四 02时03分39秒 CST -->
