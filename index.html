@@ -245,6 +245,10 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
         </select>
         <button class="btn" id="btn-add-caption" style="padding:5px 10px;font-size:11px">+ add</button>
       </div>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:11px;color:var(--muted);cursor:pointer">
+        <input type="checkbox" id="cap-shadow" checked style="cursor:pointer"/>
+        <span>Text shadow</span>
+      </label>
       <div style="font-size:10px;color:var(--muted);margin-top:4px">Drag to position · Right-click to delete</div>
     </div>
     <div class="panel-section">
@@ -640,6 +644,7 @@ document.getElementById('btn-add-caption').addEventListener('click', function() 
   var size = parseInt(document.getElementById('cap-size').value) || 24;
   var color = document.getElementById('cap-color').value;
   var align = document.getElementById('cap-align').value;
+  var shadow = document.getElementById('cap-shadow').checked;
   var canvasRect = canvas.getBoundingClientRect();
   var el = document.createElement('div');
   el.className = 'caption-el';
@@ -648,7 +653,7 @@ document.getElementById('btn-add-caption').addEventListener('click', function() 
   el.style.fontFamily = "'Outfit','Noto Sans SC',sans-serif";
   el.style.fontWeight = '500';
   el.style.textAlign = align;
-  el.style.textShadow = '0 1px 4px rgba(0,0,0,.5)';
+  el.style.textShadow = shadow ? '0 1px 4px rgba(0,0,0,.5)' : 'none';
   el.textContent = text;
   el.style.left = '0px';
   el.style.top = '0px';
@@ -658,7 +663,7 @@ document.getElementById('btn-add-caption').addEventListener('click', function() 
   var cy = canvasRect.height / 2 - elH / 2;
   el.style.left = cx + 'px';
   el.style.top = cy + 'px';
-  var capObj = { el: el, text: text, x: cx, y: cy, size: size, color: color, align: align };
+  var capObj = { el: el, text: text, x: cx, y: cy, size: size, color: color, align: align, shadow: shadow };
   captions.push(capObj);
   makeDraggable(el, capObj);
   selectCaption(capObj);
