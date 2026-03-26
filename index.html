@@ -4,6 +4,11 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>Glyph It — Chinese Character Art</title>
+<meta name="description" content="Glyph It — Chinese character art generator. Deconstruct any hanzi into ink particles. Every render unique."/>
+<meta property="og:title" content="Glyph It — 汉字的宇宙星辰"/>
+<meta property="og:description" content="每一个汉字，都是一张海报。将笔画解构成星河粒子，生成独一无二的墨迹艺术。"/>
+<meta property="og:url" content="https://glyphitapp.com"/>
+<meta property="og:type" content="website"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet"/>
@@ -130,13 +135,26 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
 </head>
 <body>
 <header>
+  <button class="btn-icon" id="btn-theme" style="margin-right:4px">&#9789;</button>
   <div class="brand">Glyph<span class="brand-it">It</span></div>
   <div class="header-spacer"></div>
   <button class="btn-icon" id="btn-export-hdr">&#8595; PNG</button>
-  <button class="btn-icon" id="btn-theme">&#9789;</button>
   <button class="btn-icon" id="btn-about">i</button>
 </header>
 
+<div id="pay-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:1100;align-items:center;justify-content:center;">
+  <div style="background:var(--panel-bg);border-radius:16px;padding:28px 24px;max-width:320px;width:90%;text-align:center;position:relative;font-family:Outfit,sans-serif;">
+    <button id="btn-pay-close" style="position:absolute;top:12px;right:14px;background:none;border:none;font-size:18px;cursor:pointer;color:var(--muted);">✕</button>
+    <div style="font-size:16px;font-weight:600;margin-bottom:4px;">支持一下 ☕</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px;">如果这个工具对你有用，请我喝杯咖啡~</div>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=placeholder" id="alipay-qr" style="width:160px;height:160px;border-radius:8px;margin-bottom:12px;"/>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:16px;">支付宝扫码 · 任意金额</div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <button id="btn-pay-skip" style="background:none;border:1px solid var(--border);border-radius:8px;padding:8px 20px;font-size:12px;cursor:pointer;color:var(--muted);">先跳过</button>
+      <button id="btn-pay-confirm" style="background:var(--accent);border:none;border-radius:8px;padding:8px 20px;font-size:12px;cursor:pointer;color:#fff;font-weight:500;">已付款，下载 ↓</button>
+    </div>
+  </div>
+</div>
 <div id="about-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;">
   <div style="background:var(--panel-bg);border-radius:16px;padding:32px;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;position:relative;font-family:Outfit,sans-serif;">
     <button id="btn-about-close" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);">✕</button>
@@ -187,6 +205,20 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
         <button class="btn" data-scheme="dusk">Dusk</button>
         <button class="btn" data-scheme="paper">Paper</button>
       </div>
+    </div>
+
+    <div class="panel-section" id="section-custom-color" style="padding-top:4px">
+      <div class="section-title">Custom Color</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label style="font-size:11px;color:var(--muted);flex:1">Background</label>
+        <input type="color" id="custom-bg" value="#f5efe0" style="width:36px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0"/>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <label style="font-size:11px;color:var(--muted);flex:1">Ink Color</label>
+        <input type="color" id="custom-ink" value="#2a1a0e" style="width:36px;height:24px;border:none;border-radius:4px;cursor:pointer;background:none;padding:0"/>
+      </div>
+      <button class="btn" id="btn-custom-apply" style="width:100%;margin-top:2px">Apply Custom</button>
+      <button class="btn" id="btn-custom-reset" style="width:100%;margin-top:6px;font-size:11px;color:var(--muted)">Reset to Scheme</button>
     </div>
     <div class="panel-section">
       <div class="section-title">Display</div>
@@ -271,6 +303,8 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
 'use strict';
 
 // Color Schemes
+var customColors = null; // { bg, ink } — overrides scheme when set
+var pendingExportScale = 0; // for payment gate
 var SCHEMES = {
   parchment: { bg:'#f5efe0', ink:'#2a1a0e', accent:'#8b4513', muted:'#b89870', ruled:'rgba(139,69,19,0.06)', watermark:'rgba(139,69,19,0.04)', badge:'#8b4513', badgeText:'#f5efe0', palette:['#2a1a0e','#8b4513','#4a6741','#1a3a5c','#5c3a6b','#6b4a1a','#2a4a4a','#5c4a2a'] },
   ink:       { bg:'#f5c800', ink:'#1a1208', accent:'#1a1208', muted:'#7a6010', ruled:'rgba(0,0,0,0.06)', watermark:'rgba(0,0,0,0.04)', badge:'#1a1208', badgeText:'#f5c800', palette:['#1a1208','#2a2010','#0a0a08','#1a1008','#221808','#181208','#100e06','#201808'] },
@@ -437,17 +471,53 @@ document.getElementById('scheme-group').addEventListener('click', function(e) {
 // ── Theme toggle ──────────────────────────────────────────────────────────────
 var isDark = false;
 
+// About modal
 (function(){
   var backdrop=document.getElementById('about-backdrop');
   document.getElementById('btn-about').addEventListener('click',function(){backdrop.style.display='flex';});
   document.getElementById('btn-about-close').addEventListener('click',function(){backdrop.style.display='none';});
   backdrop.addEventListener('click',function(e){if(e.target===backdrop)backdrop.style.display='none';});
 })();
+// Dark mode
 document.getElementById('btn-theme').addEventListener('click', function() {
   isDark = !isDark;
   document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
   this.textContent = isDark ? '☀' : '☽';
 });
+// Payment modal (soft gate — skip triggers download too)
+(function(){
+  var bd = document.getElementById('pay-backdrop');
+  function closeAndExport(doIt) {
+    bd.style.display = 'none';
+    if (doIt && pendingExportScale > 0) doExport(pendingExportScale);
+    pendingExportScale = 0;
+  }
+  document.getElementById('btn-pay-close').addEventListener('click', function(){ closeAndExport(true); });
+  document.getElementById('btn-pay-skip').addEventListener('click', function(){ closeAndExport(true); });
+  document.getElementById('btn-pay-confirm').addEventListener('click', function(){ closeAndExport(true); });
+  bd.addEventListener('click', function(e){ if(e.target===bd) closeAndExport(true); });
+})();
+// Custom colors
+(function(){
+  var bgPicker = document.getElementById('custom-bg');
+  var inkPicker = document.getElementById('custom-ink');
+  document.getElementById('btn-custom-apply').addEventListener('click', function(){
+    customColors = { bg: bgPicker.value, ink: inkPicker.value };
+    drawPoster(charInput.value.trim() || '字');
+  });
+  document.getElementById('btn-custom-reset').addEventListener('click', function(){
+    customColors = null;
+    drawPoster(charInput.value.trim() || '字');
+  });
+  // Sync pickers when scheme changes
+  document.getElementById('scheme-group').addEventListener('click', function(e){
+    if (e.target.dataset.scheme) {
+      var sc = SCHEMES[e.target.dataset.scheme];
+      if (sc) { bgPicker.value = sc.bg; inkPicker.value = sc.ink; }
+      customColors = null;
+    }
+  });
+})();
 
 // ── Generate ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', generate);
@@ -635,6 +705,7 @@ function renderInkStroke(ctx, strokePath, cx, cy, size, inkCol, holeSeed, depthF
 function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
   if (animTimer) { clearTimeout(animTimer); animTimer = null; }
   var sc = SCHEMES[currentScheme];
+  if (customColors) { sc = Object.assign({}, sc, { bg: customColors.bg, ink: customColors.ink }); }
   var W = 720, H = 1020;
   ctx.clearRect(0, 0, W, H);
 
@@ -912,6 +983,7 @@ function animatePoster(ch, data, etymInfo) {
   var total = data.strokes.length;
   var W = 720, H = 1020;
   var sc2 = SCHEMES[currentScheme];
+  if (customColors) { sc2 = Object.assign({}, sc2, { bg: customColors.bg, ink: customColors.ink }); }
 
   // Pre-compute layout — force-repulsion (same seed as drawPoster)
   var seed2 = ch.codePointAt(0) + glyphSalt * 999983;
@@ -1154,6 +1226,12 @@ function wrapText(ctx, text, x, y, maxWidth, lineH) {
 function exportPNG(scale) {
   var ch = charInput.value.trim() || 'glyph';
   scale = scale || 1;
+  // Show payment modal — skip is allowed (soft gate)
+  pendingExportScale = scale;
+  document.getElementById('pay-backdrop').style.display = 'flex';
+}
+function doExport(scale) {
+  var ch = charInput.value.trim() || 'glyph';
   if (scale === 1) {
     var link = document.createElement('a');
     link.download = 'glyph-' + ch + '.png';
