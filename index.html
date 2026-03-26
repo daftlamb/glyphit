@@ -425,6 +425,7 @@ var weatherStr = '';
 // DOM refs
 var canvas = document.getElementById('glyph-canvas');
 var ctx = canvas.getContext('2d');
+var lastData = null, lastEtymInfo = null;
 // Retina / HiDPI support
 var DPR = window.devicePixelRatio || 1;
 var CW = 720, CH = 1020;
@@ -708,12 +709,14 @@ function renderInkStroke(ctx, strokePath, cx, cy, size, inkCol, holeSeed, depthF
 }
 
 // ── Draw poster — ink stamp style ────────────────────────────────────────────
-function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
-  if (animTimer) { clearTimeout(animTimer); animTimer = null; }
+function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale, exportCtx) {
+  if (animTimer && !exportCtx) { clearTimeout(animTimer); animTimer = null; }
+  if (!exportCtx) { lastData = data; lastEtymInfo = etymInfo; }
+  var dc = exportCtx || ctx;
   var sc = SCHEMES[currentScheme];
   if (customColors) { sc = Object.assign({}, sc, { bg: customColors.bg, ink: customColors.ink }); }
   var W = 720, H = 1020;
-  ctx.clearRect(0, 0, W, H);
+  dc.clearRect(0, 0, W, H);
 
   // ── Ink color system ────────────────────────────────────────────────────────
   var inkPalettes = {
@@ -736,30 +739,30 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
   }
 
   // ── Background: rice paper ──────────────────────────────────────────────────
-  ctx.fillStyle = sc.bg;
-  ctx.fillRect(0, 0, W, H);
+  dc.fillStyle = sc.bg;
+  dc.fillRect(0, 0, W, H);
 
   // Grain texture
   var grainSeed = 99991;
   function gr() { grainSeed = (grainSeed * 1664525 + 1013904223) & 0x7fffffff; return grainSeed / 0x7fffffff; }
-  ctx.save();
+  dc.save();
   for (var gi = 0; gi < 1200; gi++) {
     var gx = gr() * W;
     var gy = gr() * H;
     var ga = 0.015 + gr() * 0.035;
-    ctx.fillStyle = 'rgba(80,50,20,' + ga + ')';
-    ctx.fillRect(gx, gy, 1, 1);
+    dc.fillStyle = 'rgba(80,50,20,' + ga + ')';
+    dc.fillRect(gx, gy, 1, 1);
   }
-  ctx.restore();
+  dc.restore();
 
   // Subtle horizontal fiber lines
-  ctx.save();
-  ctx.strokeStyle = 'rgba(120,80,40,0.035)';
-  ctx.lineWidth = 0.5;
+  dc.save();
+  dc.strokeStyle = 'rgba(120,80,40,0.035)';
+  dc.lineWidth = 0.5;
   for (var hl = 0; hl < H; hl += 22) {
-    ctx.beginPath(); ctx.moveTo(0, hl); ctx.lineTo(W, hl); ctx.stroke();
+    dc.beginPath(); dc.moveTo(0, hl); dc.lineTo(W, hl); dc.stroke();
   }
-  ctx.restore();
+  dc.restore();
 
   // ── Seeded random for stable stroke layout ──────────────────────────────────
   var seed = ch.codePointAt(0) + glyphSalt * 999983;
@@ -829,14 +832,14 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
     }
   } else {
     // Fallback: font render when no stroke data
-    ctx.save();
-    ctx.font = '220px "Noto Serif SC", serif';
-    ctx.fillStyle = inkColor(0.7);
-    ctx.globalAlpha = 0.15;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(ch, W / 2, H / 2);
-    ctx.restore();
+    dc.save();
+    dc.font = '220px "Noto Serif SC", serif';
+    dc.fillStyle = inkColor(0.7);
+    dc.globalAlpha = 0.15;
+    dc.textAlign = 'center';
+    dc.textBaseline = 'middle';
+    dc.fillText(ch, W / 2, H / 2);
+    dc.restore();
   }
 
   // ── Flow lines — 国画山水横向粒子流线 ──────────────────────────────────────
@@ -845,7 +848,7 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
     function fg() { fogSeed=(fogSeed*1664525+1013904223)&0x7fffffff; return fogSeed/0x7fffffff; }
     var fogR=ip.dark[0], fogG=ip.dark[1], fogB=ip.dark[2];
 
-    ctx.save();
+    dc.save();
     var nLines = 2 + Math.floor(fg()*2); // 2–3 lines
     for (var li=0; li<nLines; li++) {
       // Each line: a bezier path sampled into particles
@@ -896,15 +899,15 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
         var pAlpha = lineAlpha * edgeFade * (0.45 + fg()*0.55);
         var pr = dotR * (0.4 + fg()*1.0);
 
-        ctx.globalAlpha = pAlpha;
-        ctx.fillStyle = 'rgb('+fogR+','+fogG+','+fogB+')';
-        ctx.beginPath();
-        ctx.arc(bx + (fg()-0.5)*2, by + scatter, pr, 0, Math.PI*2);
-        ctx.fill();
+        dc.globalAlpha = pAlpha;
+        dc.fillStyle = 'rgb('+fogR+','+fogG+','+fogB+')';
+        dc.beginPath();
+        dc.arc(bx + (fg()-0.5)*2, by + scatter, pr, 0, Math.PI*2);
+        dc.fill();
       }
     }
-    ctx.globalAlpha = 1;
-    ctx.restore();
+    dc.globalAlpha = 1;
+    dc.restore();
   }
 
   // ── Bottom strip ─────────────────────────────────────────────────────────────
@@ -912,73 +915,73 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale) {
   var stripY = H - stripH;
   var stripTextCol = (customColors && customColors.strip) ? customColors.strip : sc.bg;
   // Strip background: semi-transparent ink color
-  ctx.save();
-  ctx.fillStyle = inkColor(0.95);
-  ctx.globalAlpha = 0.88;
-  ctx.fillRect(0, stripY, W, stripH);
-  ctx.restore();
+  dc.save();
+  dc.fillStyle = inkColor(0.95);
+  dc.globalAlpha = 0.88;
+  dc.fillRect(0, stripY, W, stripH);
+  dc.restore();
 
   // Large character ghost — left side of strip, top half only
-  ctx.save();
-  ctx.font = 'bold 36px "Noto Serif SC", serif';
-  ctx.fillStyle = stripTextCol;
-  ctx.globalAlpha = 0.9;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(ch, 20, stripY + 26);
-  ctx.restore();
+  dc.save();
+  dc.font = 'bold 36px "Noto Serif SC", serif';
+  dc.fillStyle = stripTextCol;
+  dc.globalAlpha = 0.9;
+  dc.textAlign = 'left';
+  dc.textBaseline = 'middle';
+  dc.fillText(ch, 20, stripY + 26);
+  dc.restore();
 
   // Pinyin + meaning — row 1
-  ctx.save();
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
+  dc.save();
+  dc.textAlign = 'left';
+  dc.textBaseline = 'middle';
   var midX = 72;
   if (etymInfo && etymInfo.pinyin) {
-    ctx.font = '500 15px Outfit, sans-serif';
-    ctx.fillStyle = stripTextCol;
-    ctx.globalAlpha = 0.85;
-    ctx.fillText(etymInfo.pinyin, midX, stripY + 16);
+    dc.font = '500 15px Outfit, sans-serif';
+    dc.fillStyle = stripTextCol;
+    dc.globalAlpha = 0.85;
+    dc.fillText(etymInfo.pinyin, midX, stripY + 16);
   }
   if (etymInfo && etymInfo.meaning) {
-    ctx.font = '300 12px Outfit, "Noto Sans SC", sans-serif';
-    ctx.fillStyle = stripTextCol;
-    ctx.globalAlpha = 0.55;
+    dc.font = '300 12px Outfit, "Noto Sans SC", sans-serif';
+    dc.fillStyle = stripTextCol;
+    dc.globalAlpha = 0.55;
     var meaning = etymInfo.meaning.length > 32 ? etymInfo.meaning.slice(0,30)+'…' : etymInfo.meaning;
-    ctx.fillText(meaning, midX, stripY + 34);
+    dc.fillText(meaning, midX, stripY + 34);
   }
-  ctx.restore();
+  dc.restore();
 
   // Right side row 1: stroke count
-  ctx.save();
-  ctx.textAlign = 'right';
-  ctx.textBaseline = 'middle';
+  dc.save();
+  dc.textAlign = 'right';
+  dc.textBaseline = 'middle';
   var strokeCount = (data && data.strokes) ? data.strokes.length : (etymInfo && etymInfo.strokes ? etymInfo.strokes : 0);
   if (strokeCount) {
-    ctx.font = '500 13px Outfit, sans-serif';
-    ctx.fillStyle = stripTextCol;
-    ctx.globalAlpha = 0.55;
-    ctx.fillText(strokeCount + ' strokes', W - 16, stripY + 16);
+    dc.font = '500 13px Outfit, sans-serif';
+    dc.fillStyle = stripTextCol;
+    dc.globalAlpha = 0.55;
+    dc.fillText(strokeCount + ' strokes', W - 16, stripY + 16);
   }
-  ctx.restore();
+  dc.restore();
 
   // Row 2: 节气 · weather — monospace terminal feel
-  ctx.save();
-  ctx.fillStyle = stripTextCol;
-  ctx.globalAlpha = 0.15;
-  ctx.fillRect(0, stripY + 54, W, 1); // hairline divider
-  ctx.restore();
-  ctx.save();
-  ctx.font = '300 11px "Courier New", "Noto Sans Mono", monospace';
-  ctx.fillStyle = stripTextCol;
-  ctx.globalAlpha = 0.50;
-  ctx.textAlign = 'left';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(weatherStr, 20, stripY + 76);
-  ctx.textAlign = 'right';
-  ctx.globalAlpha = 0.20;
-  ctx.font = '300 9px Outfit, sans-serif';
-  ctx.fillText('Glyph It', W - 16, stripY + 76);
-  ctx.restore();
+  dc.save();
+  dc.fillStyle = stripTextCol;
+  dc.globalAlpha = 0.15;
+  dc.fillRect(0, stripY + 54, W, 1); // hairline divider
+  dc.restore();
+  dc.save();
+  dc.font = '300 11px "Courier New", "Noto Sans Mono", monospace';
+  dc.fillStyle = stripTextCol;
+  dc.globalAlpha = 0.50;
+  dc.textAlign = 'left';
+  dc.textBaseline = 'middle';
+  dc.fillText(weatherStr, 20, stripY + 76);
+  dc.textAlign = 'right';
+  dc.globalAlpha = 0.20;
+  dc.font = '300 9px Outfit, sans-serif';
+  dc.fillText('Glyph It', W - 16, stripY + 76);
+  dc.restore();
 }
 
 // ── Animate strokes — reveal one by one with dot fade-in ─────────────────────
@@ -1240,6 +1243,7 @@ function exportPNG(scale) {
 }
 function doExport(scale) {
   var ch = charInput.value.trim() || 'glyph';
+  scale = scale || 1;
   if (scale === 1) {
     var link = document.createElement('a');
     link.download = 'glyph-' + ch + '.png';
@@ -1247,14 +1251,15 @@ function doExport(scale) {
     link.click();
     return;
   }
-  // For 2x/4x: draw to a larger offscreen canvas
+  // Re-render at true higher resolution on offscreen canvas
   var W = 720, H = 1020;
   var oc = document.createElement('canvas');
-  oc.width = W * scale; oc.height = H * scale;
+  oc.width = W * scale;
+  oc.height = H * scale;
   var octx = oc.getContext('2d');
   octx.scale(scale, scale);
-  // Copy current canvas content scaled up
-  octx.drawImage(canvas, 0, 0, W * DPR, H * DPR, 0, 0, W, H);
+  // drawPoster uses dc (exportCtx) internally — full re-render, not a scale-up
+  drawPoster(ch, lastData, lastEtymInfo, undefined, undefined, octx);
   var link = document.createElement('a');
   link.download = 'glyph-' + ch + '-' + scale + 'x.png';
   link.href = oc.toDataURL('image/png');
