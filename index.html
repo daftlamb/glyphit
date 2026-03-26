@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Glyph It &#8212; Chinese Character Poster</title>
+<title>Glyph It — Chinese Character Art</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500&family=Noto+Serif+SC:wght@300;400;600&display=swap" rel="stylesheet"/>
@@ -134,36 +134,7 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
   <div class="header-spacer"></div>
   <button class="btn-icon" id="btn-export-hdr">&#8595; PNG</button>
   <button class="btn-icon" id="btn-theme">&#9789;</button>
-  <button class="btn-icon" id="btn-about">i</button>
 </header>
-
-<!-- About Modal -->
-<div id="about-backdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;">
-  <div style="background:var(--panel-bg);border-radius:16px;padding:32px;max-width:480px;width:90%;max-height:80vh;overflow-y:auto;position:relative;font-family:Outfit,sans-serif;">
-    <button id="btn-about-close" style="position:absolute;top:16px;right:16px;background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted);">✕</button>
-    <div style="font-size:22px;font-weight:600;margin-bottom:4px;">Glyph<span style="color:var(--accent)">It</span></div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:20px;">glyphitapp.com</div>
-    <p style="font-size:13px;line-height:1.8;color:var(--text);margin-bottom:16px;">
-      每一个汉字，都是一张海报。<br>
-      <span style="color:var(--muted);font-size:12px;">Every Chinese character is a universe.</span>
-    </p>
-    <p style="font-size:12px;line-height:1.9;color:var(--muted);margin-bottom:20px;">
-      Glyph It 将汉字笔画解构成星河粒子——宛若星辰散落在墨夜之中。输入任意汉字，生成独一无二的墨迹海报。每次不同，每次都是一次偶遇。
-    </p>
-    <div style="font-size:11px;color:var(--muted);line-height:2;margin-bottom:20px;">
-      🖌️ 笔画粒子化，墨点如星尘<br>
-      🌌 Hero stroke 主笔放大，戏剧性构图<br>
-      🌊 粒子流线背景，国画山水意境<br>
-      🎨 8种配色方案<br>
-      ✨ 动画演化，从星海中聚合<br>
-      📅 节气 · 实时天气 · 拼音 · 字源<br>
-      📥 PNG 1× / 2× / 4× / SVG 导出
-    </div>
-    <div style="border-top:1px solid var(--border);padding-top:16px;font-size:11px;color:var(--muted);">
-      Made with ☕ · <a href="mailto:daftlamb@gmail.com" style="color:var(--accent);text-decoration:none;">daftlamb@gmail.com</a>
-    </div>
-  </div>
-</div>
 <div id="app">
   <div id="panel">
     <div id="drawer-handle">
@@ -442,19 +413,6 @@ document.getElementById('btn-theme').addEventListener('click', function() {
   document.documentElement.setAttribute('data-theme', isDark ? 'dark' : '');
   this.textContent = isDark ? '☀' : '☽';
 });
-// About modal
-(function(){
-  var backdrop = document.getElementById('about-backdrop');
-  document.getElementById('btn-about').addEventListener('click', function(){
-    backdrop.style.display = 'flex';
-  });
-  document.getElementById('btn-about-close').addEventListener('click', function(){
-    backdrop.style.display = 'none';
-  });
-  backdrop.addEventListener('click', function(e){
-    if (e.target === backdrop) backdrop.style.display = 'none';
-  });
-})();
 
 // ── Generate ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', generate);
