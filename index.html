@@ -828,7 +828,7 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale, exportCtx)
       var holeSeed = seed + si * 7919;
       // Each stroke gets random depth focus — creates bokeh/depth-of-field feel
       var depthFocus = 0.2 + sr() * 0.8;
-      renderInkStroke(ctx, strokes[si], sl.cx, sl.cy, sl.size, inkColor(sl.depth), holeSeed, depthFocus, sc.palette);
+      renderInkStroke(dc, strokes[si], sl.cx, sl.cy, sl.size, inkColor(sl.depth), holeSeed, depthFocus, sc.palette);
     }
   } else {
     // Fallback: font render when no stroke data
