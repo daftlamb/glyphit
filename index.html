@@ -651,7 +651,7 @@ document.getElementById('btn-add-caption').addEventListener('click', function() 
   el.className = 'caption-el';
   el.style.fontSize = size + 'px';
   el.style.color = color;
-  el.style.fontFamily = "'Outfit','Noto Sans SC',sans-serif";
+  el.style.fontFamily = "'Noto Serif SC','Noto Sans SC',serif";
   el.style.fontWeight = '500';
   el.style.textAlign = align;
   el.style.textShadow = shadow ? '0 1px 4px rgba(0,0,0,.5)' : 'none';
@@ -1394,7 +1394,7 @@ function drawCaptionsOnCtx(xctx, scaleX, scaleY) {
     var relY = cap.y * dispScaleY * scaleY;
     xctx.save();
     var fs = cap.size * dispScaleX * scaleX;
-    xctx.font = '500 ' + fs + 'px Outfit,sans-serif';
+    xctx.font = '500 ' + fs + 'px "Noto Serif SC",serif';
     xctx.fillStyle = cap.color;
     xctx.textAlign = cap.align || 'center';
     if (cap.shadow) {
