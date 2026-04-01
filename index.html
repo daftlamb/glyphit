@@ -266,6 +266,10 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
         <label class="toggle-switch"><input type="checkbox" id="tog-anim"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
       </div>
       <div class="toggle-row">
+        <span>Ink bleed</span>
+        <label class="toggle-switch"><input type="checkbox" id="tog-bleed"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
+      </div>
+      <div class="toggle-row">
         <span>Color ink</span>
         <label class="toggle-switch"><input type="checkbox" id="tog-color"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
       </div>
@@ -674,6 +678,12 @@ document.getElementById('btn-add-caption').addEventListener('click', function() 
 document.getElementById('btn-generate').addEventListener('click', generate);
 charInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') generate(); });
 
+// toggle: bleed on/off — restart or stop without full re-render
+document.getElementById('tog-bleed').addEventListener('change', function(){
+  if(!this.checked){ stopBleed(); }
+  else if(lastData){ drawPoster(charInput.value.trim()[0]||'水', lastData, lastEtymInfo); }
+});
+
 function generate() {
   var ch = charInput.value.trim();
   if (!ch) { setStatus('Please enter a character.'); return; }
@@ -735,6 +745,127 @@ function fetchGlyph(ch, callback, skipCache) {
       glyphCache[ch] = null;
       callback(null);
     });
+}
+
+// ── Ink Bleed: flow-field driven particle animation ──────────────────────────
+// Particles spawn from stroke path, drift along a flow field, fade in gradually
+var bleedRAF = null;
+var bleedParticles = [];
+
+function stopBleed(){ if(bleedRAF){cancelAnimationFrame(bleedRAF);bleedRAF=null;} bleedParticles=[]; }
+
+function inkFlowAngle(x, y, seed){
+  var s = seed * 0.0001;
+  var f1 = Math.sin(x*0.009 + s) * Math.cos(y*0.007 + s*0.6);
+  var f2 = Math.sin(x*0.022 + y*0.015 + s*1.7) * 0.45;
+  var f3 = Math.cos(x*0.041 + y*0.031 + s*2.3) * 0.2;
+  return (f1+f2+f3) * Math.PI * 2;
+}
+
+function startBleedAnim(ch, data, layout, inkColorFn, sc, W, H){
+  stopBleed();
+  var strokes = data.strokes || [];
+  var N = strokes.length;
+  if(!N) return;
+
+  // pre-sample each stroke path into a list of canvas points
+  var strokePoints = [];
+  for(var si=0; si<N; si++){
+    var sl = layout[si];
+    var pts = [];
+    // sample stroke path via offscreen canvas pixel scan — lightweight version
+    var ofc = document.createElement('canvas');
+    var ssz = Math.min(sl.size, 256);
+    ofc.width = ssz; ofc.height = ssz;
+    var ofx = ofc.getContext('2d');
+    ofx.save();
+    ofx.translate(ssz/2, ssz/2);
+    ofx.scale(ssz/1024, -ssz/1024);
+    ofx.translate(-512,-512);
+    ofx.fillStyle='#000';
+    try{ ofx.fill(new Path2D(strokes[si])); }catch(e){}
+    ofx.restore();
+    var pd = ofx.getImageData(0,0,ssz,ssz).data;
+    var scale = sl.size/ssz;
+    var ox = sl.cx - sl.size/2, oy = sl.cy - sl.size/2;
+    for(var py2=0;py2<ssz;py2+=4){
+      for(var px2=0;px2<ssz;px2+=4){
+        if(pd[(py2*ssz+px2)*4+3]>80){
+          pts.push([ox+px2*scale, oy+py2*scale]);
+        }
+      }
+    }
+    strokePoints.push({pts:pts, col:inkColorFn(sl.depth), size:sl.size, hero:sl.hero});
+  }
+
+  // spawn particles
+  var flowSeed = ch.codePointAt(0);
+  var totalPts = 0;
+  strokePoints.forEach(function(sp){ totalPts+=sp.pts.length; });
+  var targetCount = Math.min(totalPts, 1200);
+  var ratio = targetCount/Math.max(totalPts,1);
+
+  strokePoints.forEach(function(sp){
+    sp.pts.forEach(function(pt){
+      if(Math.random()>ratio) return;
+      bleedParticles.push({
+        x: pt[0], y: pt[1],
+        ox: pt[0], oy: pt[1],  // origin for hero pull
+        vx:0, vy:0,
+        col: sp.col,
+        size: sp.hero ? 1.8 : 1.0,
+        life: 0,                // 0→1 fade in
+        maxLife: 80+Math.random()*120,
+        flowSeed: flowSeed
+      });
+    });
+  });
+
+  // snapshot the static poster (without bleed) as background
+  var bgSnap = document.createElement('canvas');
+  bgSnap.width=W; bgSnap.height=H;
+  bgSnap.getContext('2d').drawImage(ctx.canvas,0,0);
+
+  function frame(){
+    // restore background each frame
+    ctx.clearRect(0,0,W,H);
+    ctx.drawImage(bgSnap,0,0);
+
+    var alive=0;
+    bleedParticles.forEach(function(p){
+      p.life++;
+      if(p.life>p.maxLife) return;
+      alive++;
+
+      // flow field direction
+      var ang = inkFlowAngle(p.x, p.y, p.flowSeed);
+      // slow drift: 0.4px/frame along field
+      p.vx = p.vx*0.82 + Math.cos(ang)*0.5;
+      p.vy = p.vy*0.82 + Math.sin(ang)*0.5;
+      // slight downward gravity
+      p.vy += 0.04;
+      p.x += p.vx;
+      p.y += p.vy;
+
+      var t = p.life/p.maxLife;
+      var alpha = t<0.15 ? t/0.15 : t>0.75 ? (1-t)/0.25 : 1.0;
+      alpha *= 0.55;
+
+      // dot radius grows slightly then shrinks (ink spreading then drying)
+      var r = p.size * (0.5 + Math.sin(t*Math.PI)*0.8);
+
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = p.col;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI*2);
+      ctx.fill();
+    });
+    ctx.globalAlpha=1;
+
+    if(alive>0) bleedRAF=requestAnimationFrame(frame);
+    else bleedRAF=null;
+  }
+  bleedRAF=requestAnimationFrame(frame);
 }
 
 // ── Ink wash renderer: splatter dots inside stroke path — sumi-e style ────────
@@ -970,11 +1101,18 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale, exportCtx)
     for (var si = 0; si < strokeLimit; si++) {
       var sl = layout[si];
       var holeSeed = seed + si * 7919;
-      // Each stroke gets random depth focus — creates bokeh/depth-of-field feel
       var depthFocus = 0.2 + sr() * 0.8;
       renderInkStroke(dc, strokes[si], sl.cx, sl.cy, sl.size, inkColor(sl.depth), holeSeed, depthFocus, sc.palette);
     }
-  } else {
+
+    // ── Ink bleed animation ───────────────────────────────────────────────────
+    var bleedOn = document.getElementById('tog-bleed') && document.getElementById('tog-bleed').checked;
+    if(bleedOn && !exportCtx){
+      stopBleed();
+      startBleedAnim(ch, data, layout, inkColor, sc, W, H);
+    }
+
+      } else {
     // Fallback: font render when no stroke data
     dc.save();
     dc.font = '220px "Noto Serif SC", serif';
