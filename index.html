@@ -266,10 +266,6 @@ header{height:var(--header-h);background:var(--header-bg);border-bottom:1px soli
         <label class="toggle-switch"><input type="checkbox" id="tog-anim"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
       </div>
       <div class="toggle-row">
-        <span>Ink bleed</span>
-        <label class="toggle-switch"><input type="checkbox" id="tog-bleed"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
-      </div>
-      <div class="toggle-row">
         <span>Color ink</span>
         <label class="toggle-switch"><input type="checkbox" id="tog-color"/><div class="toggle-track"></div><div class="toggle-knob"></div></label>
       </div>
@@ -677,12 +673,6 @@ document.getElementById('btn-add-caption').addEventListener('click', function() 
 // ── Generate ──────────────────────────────────────────────────────────────────
 document.getElementById('btn-generate').addEventListener('click', generate);
 charInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') generate(); });
-
-// toggle: bleed on/off — restart or stop without full re-render
-document.getElementById('tog-bleed').addEventListener('change', function(){
-  if(!this.checked){ stopBleed(); }
-  else if(lastData){ drawPoster(charInput.value.trim()[0]||'水', lastData, lastEtymInfo); }
-});
 
 function generate() {
   var ch = charInput.value.trim();
@@ -1106,7 +1096,7 @@ function drawPoster(ch, data, etymInfo, _strokeLimit, _dotAlphaScale, exportCtx)
     }
 
     // ── Ink bleed animation ───────────────────────────────────────────────────
-    var bleedOn = document.getElementById('tog-bleed') && document.getElementById('tog-bleed').checked;
+    var bleedOn = document.getElementById('tog-anim') && document.getElementById('tog-anim').checked;
     if(bleedOn && !exportCtx){
       stopBleed();
       startBleedAnim(ch, data, layout, inkColor, sc, W, H);
